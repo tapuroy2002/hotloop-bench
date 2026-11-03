@@ -1,5 +1,21 @@
 # Changes in this version
 
+## Easier dashboard
+- Run section is now 3 steps instead of a terminal: **choose languages** (full names, installed first, each with a
+  status: Ready / Not installed with an Install link / Build failed), **choose mode** (Accurate = 3 rounds, recommended;
+  Quick check = 1 round; remembered), **Run**. It shows the estimated time before you start, and during the run a large
+  Stop button (asks first), the language and round being tested, % done, elapsed time and time left. The tab title shows
+  progress.
+- After a run, a summary shows each language's new score and the change since last time, which languages were skipped,
+  and warnings in plain words (rounds varied a lot; a Quick check can be noisy).
+- The technical output is still there, folded under "Technical output". It opens by itself when something fails.
+- Opening the page while a run is going (another tab, or after reload) shows that run's progress and summary.
+- When the runner is not reachable, the Run button is disabled with a clear explanation.
+- Plain language throughout: "Higher score = faster", "Computer speed", "Correct results", "Fastest first", tooltips on
+  cards, tags and test names, a one-line description of each test type, and a "Run your first benchmark" banner when
+  nothing has been measured on this computer yet. Nav: results / run / details / files.
+- Server: `/api/run` accepts `rounds` (1 to 5, default 3).
+
 ## Steady scores
 - Each group now gets one untimed warm-up run, then at least 3 timed runs (time budget 1.5 s instead of 0.4 s). This
   changes the generator for all 13 languages; regenerated sources differ only in those 2 timing lines.

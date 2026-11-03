@@ -74,11 +74,13 @@ const server=http.createServer(async(req,res)=>{
     if(!body||typeof body!=='object'||Array.isArray(body))return send(res,400,{error:'Expected a JSON object.'});
     const langs=Array.isArray(body.languages)?body.languages:[];
     if(langs.some(x=>typeof x!=='string'||!allowed.has(x)))return send(res,400,{error:'Unknown language selection.'});
+    const rounds=body.rounds===undefined?3:body.rounds;
+    if(!Number.isInteger(rounds)||rounds<1||rounds>5)return send(res,400,{error:'Rounds must be a whole number from 1 to 5.'});
     active=true;
     activeOutput='';
     const bash=runnerCommand();
     let child;
-    try { child=spawn(bash,['run_all.sh',...langs],{cwd:root,windowsHide:true,shell:false,detached:process.platform!=='win32'}); activeChild=child; }
+    try { child=spawn(bash,['run_all.sh',...langs],{cwd:root,windowsHide:true,shell:false,detached:process.platform!=='win32',env:{...process.env,HOTLOOP_ROUNDS:String(rounds)}}); activeChild=child; }
     catch(e){active=false;return send(res,500,{error:'Could not start benchmark runner: '+e.message});}
     let output='',responded=false,timedOut=false,closed=false;
     const append=x=>{output+=x.toString();if(output.length>1_000_000)output=output.slice(-1_000_000);activeOutput=output;};

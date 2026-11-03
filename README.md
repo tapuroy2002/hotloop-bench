@@ -35,8 +35,9 @@ Server errors are written to `build/logs/server.log`. `stop.bat` stops the dashb
 
 On Windows, double-click `start.bat`. It starts the local dashboard at
 `http://127.0.0.1:4173`. Node.js and Git for Windows (Bash) are needed to launch runs
-from the dashboard. Use **Run benchmark** to run all installed languages or choose a
-subset; the console shows output and refreshes the results and build status. You can
+from the dashboard. In the **Run** section: 1) choose languages (missing ones have an Install link),
+2) choose Accurate (3 rounds, recommended) or Quick check (1 round), 3) press **Run benchmark**. It shows the
+estimated time, live progress and time left, and a summary of new scores when it finishes. You can
 also import `results.txt`, import `build_status.txt`, search and sort the leaderboard,
 inspect per-group scores, or export a CSV report. The server only listens on localhost.
 Score 1000 = same speed as C -O2 on the machine the scores were calibrated on. Compare only within one paste.

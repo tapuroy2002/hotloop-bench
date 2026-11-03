@@ -13,6 +13,23 @@ const REFS = {sorting:50,structures:35,graphs:39,dynamic:43,strings:52,compress:
 const GROUPS = Object.keys(REFS);
 const REF = window.HOTLOOP_REF || {ms:{},machine:'',derived:{}};
 const KNOWN_STATUS = ['compile-passed','runtime-available','compile-failed','run-failed','unavailable','pending'];
+// What to install when a language's toolchain is missing (official download pages).
+const INSTALL = {
+  c:['GCC (via MSYS2)','https://www.msys2.org/'], cpp:['G++ (via MSYS2)','https://www.msys2.org/'],
+  rust:['Rust','https://rustup.rs/'], go:['Go','https://go.dev/dl/'], java:['a JDK','https://adoptium.net/'],
+  csharp:['.NET SDK 8+','https://dotnet.microsoft.com/download'], kotlin:['Kotlin compiler','https://kotlinlang.org/docs/command-line.html'],
+  swift:['Swift','https://www.swift.org/install/'], dart:['Dart SDK','https://dart.dev/get-dart'],
+  javascript:['Node.js','https://nodejs.org/'], python:['Python','https://www.python.org/downloads/'],
+  ruby:['Ruby','https://rubyinstaller.org/'], php:['PHP','https://windows.php.net/download/']
+};
+// Rough build time in seconds, only used for the "about N minutes" estimate.
+const BUILD_SEC = {c:3, cpp:6, rust:25, go:8, java:4, csharp:15, kotlin:40, swift:30, dart:15};
+const GROUP_INFO = {
+  sorting:'9 sorting algorithms and selection', structures:'Heap, hash table, LRU cache, union-find, trees',
+  graphs:'Shortest paths, spanning trees, max flow', dynamic:'Dynamic programming: edit distance, knapsack, TSP',
+  strings:'Text search and suffix arrays', compress:'LZW, Huffman and BWT compression',
+  numeric:'Number theory, big numbers, matrices', search:'N-queens, sudoku, A* path finding, game of life'
+};
 const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 const $ = s => document.querySelector(s);
@@ -171,15 +188,15 @@ function columns() {
 }
 
 function tagFor(r) {
-  if (r.kind === 'measured') return ['Measured', 'ok'];
-  if (r.kind === 'fail') return [`${r.fails} of 8 failed`, 'fail'];
+  if (r.kind === 'measured') return ['Measured', 'ok', 'Measured on this computer'];
+  if (r.kind === 'fail') return [`${r.fails} of 8 failed`, 'fail', 'Some tests gave a wrong answer, so they score almost zero'];
   if (r.kind === 'est') {
-    if (r.status === 'compile-failed') return ['Est. (build failed)', 'fail'];
-    if (r.status === 'run-failed') return ['Est. (run failed)', 'fail'];
-    return ['Estimated', 'est'];
+    if (r.status === 'compile-failed') return ['Est. (build failed)', 'fail', 'It did not build here. The score is an estimate. See Technical output in the Run section.'];
+    if (r.status === 'run-failed') return ['Est. (run failed)', 'fail', 'It crashed here. The score is an estimate.'];
+    return ['Estimated', 'est', 'Not installed on this computer. Guessed from the reference computer and your speed.'];
   }
-  if (r.status === 'compile-failed') return ['Build failed', 'fail'];
-  return ['No data', ''];
+  if (r.status === 'compile-failed') return ['Build failed', 'fail', 'It did not build here'];
+  return ['No data', '', 'No measurement and no reference data yet'];
 }
 
 function renderBoard(model) {
@@ -195,27 +212,28 @@ function renderBoard(model) {
   const host = $('#histo');
   if (!rows.length) { host.innerHTML = `<p class="h-empty" style="padding:18px 16px;color:var(--mute);margin:0">No language matches “${esc(q)}”.</p>`; return; }
   host.innerHTML = rows.map((r, i) => {
-    const [tag, tcls] = tagFor(r);
+    const [tag, tcls, tip] = tagFor(r);
     const cls = r.kind === 'measured' ? '' : r.kind === 'fail' ? ' is-fail' : r.kind === 'est' ? ' is-est' : ' is-none';
     const isOpen = open.has(r.name);
     const details = GROUPS.map(g => {
       const x = r.groups[g], gm = Math.max(1, ...rows.map(o => o.groups[g]?.score ?? 0));
       return `<div class="d-group ${x?.kind === 'est' ? 'est' : x?.kind === 'fail' ? 'fail' : ''}">
-        <div class="d-group-top"><span>${g}</span><span>${x ? (x.kind === 'fail' ? 'checksum ×' : fmt(x.score) + ' pts') : '—'}</span></div>
+        <div class="d-group-top"><span title="${esc(GROUP_INFO[g])}">${g}</span><span>${x ? (x.kind === 'fail' ? 'checksum ×' : fmt(x.score) + ' pts') : '—'}</span></div>
         <div class="mini"><i style="width:${x ? Math.min(100, x.score / gm * 100) : 0}%"></i></div>
         <div class="d-group-top"><span>${x ? fmt(x.ms, 2) + ' ms' : 'no result'}</span><span></span></div></div>`;
     }).join('');
     const meta = r.kind === 'est'
       ? `Estimated from the reference run × this machine's speed${model.used.length ? ` (from ${esc(model.used.join(', '))})` : ' (no language measured here yet, so these are reference-machine numbers)'}.${REF.derived?.[r.name] ? ' ' + esc(REF.derived[r.name]) : ''}`
       : r.kind === 'none' ? (REF.ms[r.name] ? 'Estimates are hidden.' : `No reference data for ${esc(r.name)} yet. Install its toolchain and run it to get a score.`)
-      : `Measured here. Build status: <b>${esc(r.status)}</b>.`;
+      : r.kind === 'fail' ? `Measured here, but ${r.fails} of 8 tests gave a wrong answer. Those tests score almost zero.`
+      : `Measured on this computer. Point at a test name to see what it does.`;
     return `<div class="h-row${cls}${isOpen ? ' is-open' : ''}" role="listitem" data-lang="${esc(r.name)}">
       <button type="button" class="h-main" aria-expanded="${isOpen}" aria-controls="d-${r.id}">
         <span class="h-rank">${r.score != null && sortBy === 'score' ? String(i + 1).padStart(2, '0') : '··'}</span>
         <span class="h-name">${esc(r.name)}<small>${esc(r.family)}</small></span>
         <span class="h-bar" data-frac="${r.score != null ? r.score / max : 0}" data-kind="${r.kind}"></span>
         <span class="h-score" data-val="${r.score != null ? fmt(r.score) : '—'}">${r.score != null ? fmt(r.score) : '—'}</span>
-        <span class="h-tag ${tcls}">${tag}</span>
+        <span class="h-tag ${tcls}" title="${esc(tip)}">${tag}</span>
         <span class="h-chev" aria-hidden="true">›</span>
       </button>
       <div class="h-detail" id="d-${r.id}"><div><div class="h-detail-in"><p class="d-meta">${meta}</p>${details}</div></div></div>
@@ -255,16 +273,17 @@ function renderKpis(model) {
   for (const d of Object.values(data)) for (const c of Object.values(d.checks)) { all++; if (c.ok) ok++; }
   const top = model.rows.filter(r => r.kind === 'measured').sort((a, b) => b.score - a.score)[0];
   const speed = model.used.length ? 1 / model.factor : null;
-  const kpi = (label, val, sub) => `<div class="kpi"><dt>${label}</dt><dd><span class="kpi-val">${val}</span><span class="kpi-sub">${sub}</span></dd></div>`;
+  const kpi = (label, val, sub, tip) => `<div class="kpi" title="${esc(tip)}"><dt>${label}</dt><dd><span class="kpi-val">${val}</span><span class="kpi-sub">${sub}</span></dd></div>`;
   const o = model.used.length ? model.overall : null;
+  $('#welcome').hidden = model.used.length > 0;
   $('#kpis').innerHTML =
-    `<div class="kpi kpi-overall"><dt>Overall score</dt><dd><span class="kpi-val">${o ? `<span class="accent">${fmt(o.score)}</span>` : '—'}</span><span class="kpi-sub">${o
-      ? `this machine, ${o.langs} languages (${o.measured} measured) · reference machine ${fmt(o.ref)}`
-      : 'Known after the first run'}</span></dd></div>` +
-    kpi('Fastest measured', top ? `<span class="accent">${esc(top.name)}</span> ${fmt(top.score)}` : '—', top ? 'points, geometric mean of 8 groups' : 'Run a language to measure it') +
-    kpi('This machine', speed ? `${fmt(speed, 2)}×` : '—', speed ? `reference speed, from ${model.used.length} language${model.used.length > 1 ? 's' : ''}` : 'Known after the first run') +
-    kpi('Measured here', `${measured.length}<span class="dim">/${LANGS.length}</span>`, [showEst && est.length ? `${est.length} estimated` : '', none.length ? `no data: ${none.map(r => esc(r.name)).join(', ')}` : ''].filter(Boolean).join(', ') || 'Every language measured') +
-    kpi('Checksums', all ? `<span class="${ok === all ? 'accent' : 'bad'}">${ok}</span>/${all}` : '—', all ? (ok === all ? 'All groups match the reference' : `${all - ok} group${all - ok > 1 ? 's' : ''} returned a wrong result`) : 'Nothing measured yet');
+    `<div class="kpi kpi-overall" title="One number for this computer: the average score of ${o ? o.langs : 12} languages. Languages you have not installed use estimates. Higher is faster."><dt>Overall score</dt><dd><span class="kpi-val">${o ? `<span class="accent">${fmt(o.score)}</span>` : '—'}</span><span class="kpi-sub">${o
+      ? `Your computer (${o.measured} of ${o.langs} languages measured). Reference computer: ${fmt(o.ref)}`
+      : 'Shown after your first run'}</span></dd></div>` +
+    kpi('Fastest language here', top ? `<span class="accent">${esc(top.name)}</span> ${fmt(top.score)}` : '—', top ? 'Average score over the 8 tests' : 'Run a language to measure it', 'The fastest language that was actually measured on this computer') +
+    kpi('Computer speed', speed ? `${fmt(speed, 2)}×` : '—', speed ? `compared with the reference computer (1.00×)` : 'Shown after your first run', 'Above 1 means faster than the reference computer, below 1 means slower') +
+    kpi('Languages tested', `${measured.length}<span class="dim">/${LANGS.length}</span>`, [showEst && est.length ? `${est.length} estimated` : '', none.length ? `no data: ${none.map(r => esc(r.name)).join(', ')}` : ''].filter(Boolean).join(', ') || 'Every language measured', 'Install more languages to replace estimates with real measurements') +
+    kpi('Correct results', all ? `<span class="${ok === all ? 'accent' : 'bad'}">${ok}</span>/${all}` : '—', all ? (ok === all ? 'Every test gave the right answer' : `${all - ok} test${all - ok > 1 ? 's' : ''} gave a wrong answer`) : 'Nothing measured yet', 'Each test checks its answer. A wrong answer scores almost zero.');
 }
 
 // ---------- groups ----------
@@ -277,7 +296,8 @@ function renderGroups(model) {
     const max = Math.max(1, ...list.map(o => o.x?.score ?? 0));
     const best = list[0]?.x;
     return `<section class="g-panel" aria-label="${g}">
-      <div class="g-head"><h3>${g}</h3><span title="C -O2 time on the calibration machine">ref ${REFS[g]} ms</span></div>
+      <div class="g-head"><h3 title="${esc(GROUP_INFO[g])}">${g}</h3><span title="Time of optimized C on the reference computer">ref ${REFS[g]} ms</span></div>
+      <p class="g-info">${esc(GROUP_INFO[g])}</p>
       <ol class="g-list">${list.map(({r, x}, i) => {
         const k = !x ? 'none' : x.kind === 'est' ? 'est' : x.kind === 'fail' ? 'fail' : '';
         const v = !x ? '—' : x.kind === 'fail' ? '×' : metric === 'ms' ? fmt(x.ms, x.ms < 100 ? 1 : 0) : fmt(x.score, x.score < 100 ? 1 : 0);
@@ -301,12 +321,57 @@ function renderPicker() {
   // first time build status is known: preselect everything except languages whose toolchain was missing
   const seed = !pickerSeeded && (Object.keys(statuses).length > 0 || !host.children.length);
   if (Object.keys(statuses).length) pickerSeeded = true;
-  host.innerHTML = LANGS.map(([name, id]) => {
+  // Installed languages first, so the ones you can run are easy to find.
+  const rank = id => ({'compile-passed':0,'runtime-available':0,'run-failed':1,'compile-failed':1,unavailable:3}[statuses[id]] ?? 2);
+  host.innerHTML = [...LANGS].sort((a, b) => rank(a[1]) - rank(b[1])).map(([name, id]) => {
     const st = statuses[id];
     const checked = seed ? st !== 'unavailable' : prev.has(id);
-    const na = st === 'unavailable' ? '<span class="na" title="Toolchain not found last run">n/a</span>' : '';
-    return `<label class="chip"><input type="checkbox" value="${id}" ${checked ? 'checked' : ''}><span>${id}${na}</span></label>`;
+    const [label, cls] = statusText(id, st);
+    return `<label class="lang ${cls}"><input type="checkbox" value="${id}" ${checked ? 'checked' : ''}><span class="lang-box"><b>${esc(name)}</b><small>${label}</small></span></label>`;
   }).join('');
+  updateEstimate();
+}
+function statusText(id, st) {
+  if (st === 'compile-passed' || st === 'runtime-available') return ['Ready', 'is-ready'];
+  if (st === 'unavailable') {
+    const [what, url] = INSTALL[id];
+    return [`Not installed · <a href="${url}" target="_blank" rel="noopener noreferrer" title="Install ${esc(what)}, then run the benchmark again">Install ↗</a>`, 'is-missing'];
+  }
+  if (st === 'compile-failed') return ['Build failed last time', 'is-failed'];
+  if (st === 'run-failed') return ['Crashed last time', 'is-failed'];
+  return ['Not checked yet', ''];
+}
+
+// ---------- time estimate ----------
+// Mirrors the timing loop in the generated programs: one warm-up plus at least 3 timed runs, 1.5 s budget, max 40 runs.
+const chosenLangs = () => $$('#language-picker input:checked').map(x => x.value);
+const chosenRounds = () => Number(($('input[name="mode"]:checked') || {}).value) || 3;
+function estimateSeconds(ids, rounds) {
+  const model = buildModel(), byId = Object.fromEntries(model.rows.map(r => [r.id, r]));
+  let sec = 0;
+  for (const id of ids) {
+    if (statuses[id] === 'unavailable') continue;
+    sec += BUILD_SEC[id] || 0;
+    let perRound = 1;
+    for (const g of GROUPS) {
+      const ms = byId[id]?.groups[g]?.ms ?? REFS[g] * 3;
+      perRound += Math.min(40 * ms, Math.max(4 * ms, 1500 + ms)) / 1000;
+    }
+    sec += perRound * rounds;
+  }
+  return sec;
+}
+const fmtDur = s => s < 60 ? `${Math.max(5, Math.round(s / 5) * 5)} seconds` : s < 3600 ? `${Math.round(s / 60)} minute${Math.round(s / 60) === 1 ? '' : 's'}` : `${(s / 3600).toFixed(1)} hours`;
+const fmtClock = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+function updateEstimate() {
+  const ids = chosenLangs(), el = $('#run-estimate');
+  if (!el || running || runnerOffline) return;
+  const runnable = ids.filter(id => statuses[id] !== 'unavailable'), missing = ids.length - runnable.length;
+  if (!ids.length) { el.textContent = 'Choose at least one language.'; el.className = 'run-estimate bad'; return; }
+  if (!runnable.length) { el.textContent = 'None of the chosen languages are installed. Install one first (see the links above).'; el.className = 'run-estimate bad'; return; }
+  el.className = 'run-estimate';
+  el.textContent = `${runnable.length} language${runnable.length > 1 ? 's' : ''} · about ${fmtDur(estimateSeconds(runnable, chosenRounds()))}`
+    + (missing ? ` · ${missing} not installed, will be skipped` : '');
 }
 
 // ---------- render all ----------
@@ -363,63 +428,139 @@ function setTerm(text) {
   term.innerHTML = colorize(text);
   if (atBottom) term.scrollTop = term.scrollHeight;
 }
-function updateProgress(output, chosenCount) {
+// Progress is read from the runner's output, so it also works for a run started in another tab.
+let running = false, runStart = 0, runEstimate = 0, runnerOffline = openedAsFile;
+const NAME_OF = Object.fromEntries(LANGS.map(([n, id]) => [id, n]));
+function updateProgress(output) {
+  const requested = (output.match(/^build \S+ \.\.\./gm) || []).length;
   const skipped = (output.match(/^skip\s/gm) || []).length + (output.match(/^FAILED build/gm) || []).length;
   const rounds = Number((/^rounds (\d+)/m.exec(output) || [])[1]) || 1;
-  const runs = Math.max(1, chosenCount - skipped) * GROUPS.length * rounds;
+  const total = Math.max(1, requested - skipped) * GROUPS.length * rounds;
   const done = (output.match(/^HOTLOOP\|[^|]+\|(sorting|structures|graphs|dynamic|strings|compress|numeric|search)\|/gm) || []).length;
-  const steps = output.match(/^(build|run)\s+\S+( \(round \d+\/\d+\))?/gm);
-  const last = steps ? steps[steps.length - 1].replace(/\s+/, ' ') : 'starting';
-  $('#progress-label').textContent = last + (last.startsWith('run') ? ' …' : '');
-  $('#progress-count').textContent = `${done}/${runs} groups`;
-  $('#progress-fill').style.width = Math.min(100, done / runs * 100) + '%';
-  $('#sb-state').textContent = last;
+  const m = [...output.matchAll(/^(build|run)\s+(\S+)(?: \(round (\d+)\/(\d+)\))?/gm)].pop();
+  const label = !m ? 'Starting…'
+    : m[1] === 'build' ? `Preparing ${NAME_OF[m[2]] || m[2]}…`
+    : `Testing ${NAME_OF[m[2]] || m[2]}` + (m[4] > 1 ? ` — round ${m[3]} of ${m[4]}` : '') + '…';
+  const frac = Math.min(1, done / total), pct = Math.round(frac * 100);
+  const elapsed = (Date.now() - runStart) / 1000;
+  const left = frac > 0.15 ? elapsed * (1 - frac) / frac : Math.max(0, runEstimate - elapsed);
+  $('#progress-label').textContent = label;
+  $('#progress-count').textContent = `${pct}% · ${fmtClock(elapsed)} elapsed` + (frac < 1 && left > 0 ? ` · about ${fmtDur(left)} left` : '');
+  $('#progress-fill').style.width = pct + '%';
+  $('.progress-bar').setAttribute('aria-valuenow', pct);
+  $('#sb-state').textContent = label;
+  document.title = `(${pct}%) hotloop`;
 }
 function setMsg(text, kind) { const m = $('#run-message'); m.textContent = text; m.className = 'run-message ' + (kind || ''); }
 
 const runButton = $('#run-button');
-async function runBenchmark() {
-  const chosen = $$('#language-picker input:checked').map(x => x.value);
-  if (!chosen.length) { setMsg('Select at least one language.', 'bad'); toast('Select at least one language.', true); return; }
-  if (openedAsFile) { setMsg(NO_RUNNER, 'bad'); toast('Open the dashboard with start.bat to run benchmarks.', true); return; }
-  runButton.disabled = true; $('.run-label').textContent = 'Running…';
-  $('#console').classList.add('is-running'); $('#stop-run').hidden = false; $('#progress').hidden = false;
-  $('#sb-state').classList.add('running'); $('#sb-state').textContent = 'starting';
-  const intro = '$ ./run_all.sh ' + chosen.join(' ') + '\n\n';
-  setTerm(intro); setMsg('');
+function setRunning(on) {
+  running = on;
+  runButton.disabled = on; $('.run-label').textContent = on ? 'Running…' : 'Run benchmark';
+  $('#console').classList.toggle('is-running', on); $('#stop-run').hidden = !on; $('#progress').hidden = !on;
+  $('#run-estimate').hidden = on;
+  $$('#language-picker input, input[name="mode"], [data-preset]').forEach(x => x.disabled = on);
+  $('#sb-state').classList.toggle('running', on);
+  if (!on) { $('#sb-state').textContent = 'idle'; updateEstimate(); }
+}
+// Poll the runner until it is idle. Returns the last output seen.
+async function followRun(intro, until) {
   let seen = '';
+  while (true) {
+    const next = until ? await Promise.race([until.then(r => ({r})), new Promise(res => setTimeout(() => res({}), 500))]) : (await new Promise(res => setTimeout(res, 700)), {});
+    if (next.r) return {seen, response: next.r};
+    try {
+      const p = await fetch('/api/run/status', {cache:'no-store'});
+      if (p.ok) {
+        const st = await p.json(), out = String(st.output || '');
+        if (out !== seen) { seen = out; setTerm(intro + out); updateProgress(out); }
+        if (!until && !st.active) return {seen};
+      }
+    } catch {}
+  }
+}
+// Friendly summary after a run: new score per language, change since last time, and any warnings.
+function showSummary(before, output, ok) {
+  const rounds = Number((/^rounds (\d+)/m.exec(output) || [])[1]) || 1;
+  const host = $('#run-summary');
+  const ran = [...output.matchAll(/^run\s+(\S+)/gm)].map(m => NAME_OF[m[1]]).filter((n, i, a) => n && a.indexOf(n) === i);
+  const skipped = [...output.matchAll(/^skip\s+(\S+):/gm)].map(m => NAME_OF[m[1]] || m[1]);
+  const warn = {};
+  for (const m of output.matchAll(/^\s+warning: (\S+) rounds differ by (\d+)%/gm)) warn[m[1]] = m[2];
+  const rows = ran.map(name => {
+    const now = data[name]?.score, prev = before[name];
+    const fails = Object.values(data[name]?.checks || {}).filter(c => !c.ok).length;
+    let delta = '';
+    if (now != null && prev != null && prev > 0) {
+      const d = (now - prev) / prev * 100;
+      delta = Math.abs(d) < 1 ? '<span class="dim">about the same</span>' : `<span class="${d > 0 ? 'up' : 'down'}">${d > 0 ? '▲' : '▼'} ${Math.abs(d).toFixed(0)}%</span> <span class="dim">vs ${fmt(prev)}</span>`;
+    } else if (now != null) delta = '<span class="dim">first measurement</span>';
+    const note = fails ? `<span class="bad">${fails} test${fails > 1 ? 's' : ''} gave a wrong answer</span>`
+      : warn[name] ? `<span class="warn" title="The rounds differed by ${warn[name]}%. Close heavy apps and run again for a steadier number.">rounds varied ${warn[name]}%</span>` : '';
+    return `<li><b>${esc(name)}</b><span class="s-score">${now != null ? fmt(now) : '—'}</span><span class="s-delta">${delta}</span><span class="s-note">${note}</span></li>`;
+  }).join('');
+  const notes = [];
+  if (skipped.length) notes.push(`Skipped (not installed): ${skipped.map(esc).join(', ')}. Install them from the links in step 1.`);
+  if (rounds === 1 && ran.length) notes.push('This was a Quick check, so the change since last time may just be noise. Use Accurate mode for a number you can compare.');
+  if (Object.keys(warn).length) notes.push('Some rounds varied a lot, usually because other apps were busy. Close heavy apps and run again for steadier numbers.');
+  if (!ok && !rows) notes.push('Nothing was measured. Open "Technical output" below to see what went wrong.');
+  host.innerHTML = (rows ? `<h4>Your results</h4><ul class="s-list">${rows}</ul>` : '') + notes.map(n => `<p class="s-tip">${n}</p>`).join('')
+    + (rows ? `<a class="link-btn s-link" href="#board">See the full leaderboard ↑</a>` : '');
+  host.hidden = !host.innerHTML;
+}
+function finishTitle(ok) {
+  document.title = (ok ? '✓ Done' : '⚠ Finished') + ' — hotloop';
+  const reset = () => { if (!running) document.title = TITLE; };
+  if (document.hasFocus()) setTimeout(reset, 4000); else addEventListener('focus', () => setTimeout(reset, 1500), {once:true});
+}
+const TITLE = document.title;
+
+async function runBenchmark() {
+  const chosen = chosenLangs(), rounds = chosenRounds();
+  if (!chosen.length) { setMsg('Choose at least one language in step 1.', 'bad'); toast('Choose at least one language.', true); return; }
+  if (!chosen.some(id => statuses[id] !== 'unavailable')) { setMsg('None of the chosen languages are installed. Use the "Get …" links in step 1 to install one.', 'bad'); return; }
+  if (openedAsFile) { setMsg(NO_RUNNER, 'bad'); toast('Open the dashboard with start.bat to run benchmarks.', true); return; }
+  const before = Object.fromEntries(Object.entries(data).map(([n, d]) => [n, d.score]));
+  runStart = Date.now(); runEstimate = estimateSeconds(chosen, rounds);
+  setRunning(true); $('#run-summary').hidden = true; setMsg('');
+  const intro = '$ HOTLOOP_ROUNDS=' + rounds + ' ./run_all.sh ' + chosen.join(' ') + '\n\n';
+  setTerm(intro); updateProgress('');
+  let seen = '', ok = false;
   try {
     const health = await fetch('/api/health').catch(() => { throw Error(NO_RUNNER); });
     if (!health.ok) throw Error(NO_RUNNER);
-    const request = fetch('/api/run', {method:'POST', headers:{'content-type':'application/json'}, body:JSON.stringify({languages:chosen})})
-      .catch(() => { throw Error('Lost the connection to the local runner. Check that start.bat is still open, then reload.'); });
-    let response;
-    while (!response) {
-      const next = await Promise.race([request.then(r => ({r})), new Promise(res => setTimeout(() => res({}), 400))]);
-      if (next.r) { response = next.r; break; }
-      try {
-        const p = await fetch('/api/run/status', {cache:'no-store'});
-        if (p.ok) { const st = await p.json(), out = String(st.output || ''); if (out !== seen) { seen = out; setTerm(intro + out); updateProgress(out, chosen.length); } }
-      } catch {}
-    }
-    const result = await response.json();
+    const request = fetch('/api/run', {method:'POST', headers:{'content-type':'application/json'}, body:JSON.stringify({languages:chosen, rounds})})
+      .catch(() => { throw Error('Lost the connection to the runner. Check that start.bat is still open, then reload this page.'); });
+    const f = await followRun(intro, request); seen = f.seen;
+    const response = f.response, result = await response.json();
     if (!response.ok && !result.output) throw Error(result.error || 'The runner refused the request.');
-    setTerm(intro + (result.output || 'Run finished with no output.'));
-    updateProgress(result.output || '', chosen.length);
+    const output = result.output || '';
+    setTerm(intro + (output || 'Run finished with no output.'));
     if (result.status) parseStatus(result.status);
     if (result.results && result.results.includes('HOTLOOP|')) load(result.results, true); else render();
     renderPicker();
-    const now = new Date().toLocaleTimeString();
-    if (result.ok) { setMsg(`Run finished at ${now}. Leaderboard updated.`, 'ok'); toast('Run finished. Leaderboard updated.'); }
-    else if (result.code === 130 || result.code === null) { setMsg(result.error || 'Run stopped. Results from finished languages were kept.', 'bad'); toast('Run stopped', true); }
-    else { setMsg(result.error || `Run finished with failures (exit code ${result.code}). Red lines in the output show what failed.`, 'bad'); toast('Run finished with failures', true); }
+    ok = result.ok;
+    if (result.ok) { setMsg(`Finished in ${fmtClock((Date.now() - runStart) / 1000)}. The leaderboard is updated.`, 'ok'); toast('Run finished. Leaderboard updated.'); }
+    else if (result.code === 130 || result.code === null) { setMsg(result.error || 'Run stopped. Languages that finished kept their new results.', 'bad'); toast('Run stopped', true); }
+    else { setMsg(result.error || 'The run finished, but something failed. See the summary below, or open Technical output for details.', 'bad'); toast('Run finished with problems', true); $('#term-details').open = true; }
+    showSummary(before, output, result.ok);
   } catch (e) {
     setTerm(intro + seen + '\nerror: ' + e.message + '\n'); setMsg(e.message, 'bad'); toast(e.message, true);
   } finally {
-    runButton.disabled = false; $('.run-label').textContent = 'Run benchmark';
-    $('#console').classList.remove('is-running'); $('#stop-run').hidden = true;
-    $('#sb-state').classList.remove('running'); $('#sb-state').textContent = 'idle';
+    setRunning(false); finishTitle(ok);
   }
+}
+// A run is already going (started in another tab, or before this page was reloaded): show its progress.
+async function watchExistingRun() {
+  await bootLoad; // compare against the results that were there before this run
+  const before = Object.fromEntries(Object.entries(data).map(([n, d]) => [n, d.score]));
+  runStart = Date.now(); runEstimate = 0;
+  setRunning(true); setMsg('A benchmark is already running. Showing its progress.', '');
+  const {seen} = await followRun('');
+  await refreshFiles(true);
+  setRunning(false);
+  setMsg('The run finished. The leaderboard is updated.', 'ok');
+  showSummary(before, seen, true); finishTitle(true);
 }
 
 // ---------- events ----------
@@ -432,23 +573,28 @@ runButton.addEventListener('click', e => {
   runBenchmark();
 });
 $('#stop-run').addEventListener('click', async () => {
-  $('#stop-run').textContent = 'stopping…';
+  if (!confirm('Stop the benchmark? Languages that already finished keep their new results.')) return;
+  $('#stop-run').textContent = 'Stopping…'; $('#stop-run').disabled = true;
   try { await fetch('/api/run/cancel', {method:'POST', headers:{'content-type':'application/json'}, body:'{}'}); } catch {}
-  setTimeout(() => { $('#stop-run').textContent = 'stop'; }, 1500);
+  setTimeout(() => { $('#stop-run').textContent = 'Stop'; $('#stop-run').disabled = false; }, 1500);
 });
 $('#clear-terminal').addEventListener('click', () => { term.innerHTML = '<span class="t-dim"># cleared</span>'; });
-$('#language-picker').addEventListener('change', e => {
-  const chip = e.target.closest('.chip'); if (!chip) return;
-  chip.classList.remove('flash'); void chip.offsetWidth; chip.classList.add('flash');
-});
+const flash = el => { el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash'); };
+$('#language-picker').addEventListener('change', e => { const c = e.target.closest('.lang'); if (c) flash(c); updateEstimate(); });
 $$('[data-preset]').forEach(b => b.addEventListener('click', () => {
   const p = b.dataset.preset;
   $$('#language-picker input').forEach(i => {
     const st = statuses[i.value];
     const want = p === 'all' || (p === 'ready' && (st === 'compile-passed' || st === 'runtime-available' || st === 'run-failed'));
-    if (i.checked !== want) { i.checked = want; const c = i.closest('.chip'); c.classList.remove('flash'); void c.offsetWidth; c.classList.add('flash'); }
+    if (i.checked !== want) { i.checked = want; flash(i.closest('.lang')); }
   });
+  updateEstimate();
 }));
+// Remember the chosen mode for next time (per browser; works without storage too).
+try { const saved = localStorage.getItem('hotloop-mode'); const r = saved && $(`input[name="mode"][value="${saved}"]`); if (r) r.checked = true; } catch {}
+$$('input[name="mode"]').forEach(r => r.addEventListener('change', () => { try { localStorage.setItem('hotloop-mode', r.value); } catch {} updateEstimate(); }));
+// File "buttons" are labels: let Enter and Space open them from the keyboard.
+$$('label.btn[for]').forEach(l => l.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); document.getElementById(l.htmlFor).click(); } }));
 
 $('#histo').addEventListener('click', e => {
   const btn = e.target.closest('.h-main'); if (!btn) return;
@@ -514,14 +660,19 @@ clock(); setInterval(clock, 15000);
 if (REF.machine) $('#ref-machine').textContent = REF.machine;
 
 // ---------- boot ----------
+let bootLoad = Promise.resolve();
 renderPicker();
 render();
 if (openedAsFile) {
   $('#connection').classList.add('offline'); $('#connection-state').textContent = 'opened as file';
-  setMsg(NO_RUNNER, 'bad');
+  setMsg(NO_RUNNER, 'bad'); runButton.disabled = true;
+  $('#run-estimate').textContent = 'Open the dashboard with start.bat to run benchmarks.'; $('#run-estimate').className = 'run-estimate bad';
 } else {
-  refreshFiles(true);
+  bootLoad = refreshFiles(true);
   fetch('/api/health').then(r => { if (!r.ok) throw 0; return r.json(); })
-    .then(h => { $('#connection').classList.add('online'); $('#connection-state').textContent = 'runner online'; if (h.active) setMsg('A benchmark is already running in another tab.', ''); })
-    .catch(() => { $('#connection').classList.add('offline'); $('#connection-state').textContent = 'runner offline'; });
+    .then(h => { $('#connection').classList.add('online'); $('#connection-state').textContent = 'runner online'; if (h.active) watchExistingRun(); })
+    .catch(() => {
+      $('#connection').classList.add('offline'); $('#connection-state').textContent = 'runner offline';
+      runnerOffline = true; setMsg(NO_RUNNER, 'bad'); runButton.disabled = true; $('#run-estimate').textContent = 'The runner is not running. Start it with start.bat.'; $('#run-estimate').className = 'run-estimate bad';
+    });
 }

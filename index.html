@@ -15,10 +15,10 @@
   <header class="topbar">
     <a class="brand" href="#board" aria-label="hotloop, back to top"><span class="brand-mark" aria-hidden="true">&gt;_</span><span class="brand-name">hotloop</span><span class="cursor" aria-hidden="true"></span></a>
     <nav class="tabs" aria-label="Sections">
-      <a href="#board" class="tab is-active" data-scramble><span class="tab-key">1</span>board</a>
+      <a href="#board" class="tab is-active" data-scramble><span class="tab-key">1</span>results</a>
       <a href="#run" class="tab" data-scramble><span class="tab-key">2</span>run</a>
-      <a href="#groups" class="tab" data-scramble><span class="tab-key">3</span>groups</a>
-      <a href="#data" class="tab" data-scramble><span class="tab-key">4</span>data</a>
+      <a href="#groups" class="tab" data-scramble><span class="tab-key">3</span>details</a>
+      <a href="#data" class="tab" data-scramble><span class="tab-key">4</span>files</a>
     </nav>
     <button class="icon-btn" id="refresh" type="button" title="Reload results.txt and build_status.txt" aria-label="Reload results">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v5h-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square"/></svg>
@@ -32,20 +32,28 @@
         <div>
           <p class="prompt"><span class="p-user">you</span>@<span class="p-host">hotloop</span>:<span class="p-path">~/bench</span>$ ./leaderboard</p>
           <h1 id="board-title">Language benchmark</h1>
-          <p class="lede">One generated program, 8 algorithm groups, 13 languages. Every run is checked by checksum. 1000 points equals C&nbsp;-O2 speed on the calibration machine.</p>
+          <p class="lede">How fast is each programming language on your computer? Every language runs the same 8 kinds of tests. <b>Higher score = faster.</b> 1000 means as fast as optimized C on the reference computer.</p>
         </div>
         <p class="run-stamp" id="run-date"></p>
+      </div>
+
+      <div class="welcome" id="welcome" hidden>
+        <div>
+          <h2>No results from this computer yet</h2>
+          <p>The scores below are estimates from a reference computer. Run the benchmark once to measure your own.</p>
+        </div>
+        <a class="run-btn" href="#run"><span aria-hidden="true">▶</span>Run your first benchmark</a>
       </div>
 
       <dl class="kpis" id="kpis" aria-label="Summary"></dl>
 
       <div class="board-panel">
         <div class="board-tools">
-          <label class="field search"><span aria-hidden="true">/</span><input id="search" type="search" placeholder="Filter languages" autocomplete="off" aria-label="Filter languages"></label>
+          <label class="field search"><span aria-hidden="true">/</span><input id="search" type="search" placeholder="Find a language" autocomplete="off" aria-label="Find a language"></label>
           <div class="seg" role="radiogroup" aria-label="Sort leaderboard">
-            <button type="button" role="radio" aria-checked="true" data-sort="score">Score</button>
-            <button type="button" role="radio" aria-checked="false" data-sort="name">Name</button>
-            <button type="button" role="radio" aria-checked="false" data-sort="status">Source</button>
+            <button type="button" role="radio" aria-checked="true" data-sort="score">Fastest first</button>
+            <button type="button" role="radio" aria-checked="false" data-sort="name">A–Z</button>
+            <button type="button" role="radio" aria-checked="false" data-sort="status">Tested first</button>
           </div>
           <span class="spacer"></span>
           <label class="toggle"><input type="checkbox" id="show-est" checked><span class="toggle-box" aria-hidden="true"></span>Show estimates</label>
@@ -55,9 +63,10 @@
       </div>
 
       <p class="legend">
-        <span><i class="sw sw-measured"></i>Measured on this machine</span>
-        <span><i class="sw sw-est"></i>Estimated from the reference run, scaled to this machine</span>
-        <span><i class="sw sw-fail"></i>Checksum or build failed</span>
+        <span><i class="sw sw-measured"></i>Measured on this computer</span>
+        <span><i class="sw sw-est"></i>Estimate (language not installed here)</span>
+        <span><i class="sw sw-fail"></i>Failed (wrong answer or did not build)</span>
+        <span class="legend-tip">Click a language to see its 8 test scores.</span>
       </p>
     </section>
 
@@ -65,38 +74,67 @@
     <section id="run" class="section" aria-labelledby="run-title">
       <div class="section-head">
         <h2 id="run-title">Run the benchmark</h2>
-        <p>Pick languages, then run. Each one builds, then runs alone so timings stay clean.</p>
+        <p>Measure how fast each language runs on this computer. Pick languages, pick a mode, press Run. Nothing is uploaded.</p>
       </div>
 
-      <div class="term" id="console">
-        <div class="term-bar">
-          <span class="term-title">bash — run_all.sh</span>
-          <span class="term-actions">
-            <button type="button" id="stop-run" class="term-btn danger" hidden>stop</button>
-            <button type="button" id="clear-terminal" class="term-btn">clear</button>
-          </span>
+      <div class="run-card" id="console">
+        <div class="step">
+          <div class="step-head">
+            <span class="step-n" aria-hidden="true">1</span>
+            <h3>Choose languages</h3>
+            <span class="spacer"></span>
+            <span class="presets" role="group" aria-label="Quick select">
+              <button type="button" class="link-btn" data-preset="ready">Installed only</button>
+              <button type="button" class="link-btn" data-preset="all">All</button>
+              <button type="button" class="link-btn" data-preset="none">None</button>
+            </span>
+          </div>
+          <div class="lang-grid" id="language-picker" role="group" aria-label="Languages to run"></div>
         </div>
 
-        <div class="cmdline">
-          <span class="ps1">$</span> <span class="cmd">./run_all.sh</span>
-          <div class="picker" id="language-picker" role="group" aria-label="Languages to run"></div>
-        </div>
-        <div class="cmd-presets">
-          <span class="dim">select:</span>
-          <button type="button" class="link-btn" data-preset="all">all</button>
-          <button type="button" class="link-btn" data-preset="ready">ready to run</button>
-          <button type="button" class="link-btn" data-preset="none">none</button>
-          <span class="spacer"></span>
-          <button type="button" id="run-button" class="run-btn"><span class="run-key" aria-hidden="true">⏎</span><span class="run-label">Run benchmark</span></button>
+        <div class="step">
+          <div class="step-head">
+            <span class="step-n" aria-hidden="true">2</span>
+            <h3>Choose mode</h3>
+          </div>
+          <div class="modes" role="radiogroup" aria-label="Run mode">
+            <label class="mode"><input type="radio" name="mode" value="3" checked><span><b>Accurate <em>recommended</em></b><small>3 rounds, keeps the best time. Steady scores even if other apps are busy.</small></span></label>
+            <label class="mode"><input type="radio" name="mode" value="1"><span><b>Quick check</b><small>1 round, about 3× faster. Scores can jump if the computer is busy.</small></span></label>
+          </div>
         </div>
 
-        <div class="progress" id="progress" hidden>
-          <div class="progress-text"><span id="progress-label">starting</span><span id="progress-count"></span></div>
-          <div class="progress-bar" aria-hidden="true"><i id="progress-fill"></i></div>
+        <div class="step step-go">
+          <div class="step-head">
+            <span class="step-n" aria-hidden="true">3</span>
+            <h3>Run</h3>
+          </div>
+          <div class="go-row">
+            <button type="button" id="run-button" class="run-btn"><span class="run-key" aria-hidden="true">▶</span><span class="run-label">Run benchmark</span></button>
+            <button type="button" id="stop-run" class="btn btn-danger" hidden>Stop</button>
+            <p class="run-estimate" id="run-estimate" aria-live="polite"></p>
+          </div>
+          <p class="run-tip">For the most reliable score, close heavy apps (IDEs, builds, games) and keep the charger plugged in.</p>
+
+          <div class="progress" id="progress" hidden>
+            <div class="progress-text"><span id="progress-label">Starting…</span><span id="progress-count"></span></div>
+            <div class="progress-bar" role="progressbar" aria-label="Benchmark progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i id="progress-fill"></i></div>
+            <p class="progress-note">You can leave this page. The run continues, and the results appear here when you come back.</p>
+          </div>
+
+          <div class="run-message" id="run-message" role="status" aria-live="polite"></div>
+          <div class="run-summary" id="run-summary" hidden></div>
         </div>
 
-        <pre id="terminal-output" class="term-out" tabindex="0" aria-label="Benchmark output"><span class="t-dim"># output appears here while a run is active</span></pre>
-        <div class="run-message" id="run-message" role="status" aria-live="polite"></div>
+        <details class="term-details" id="term-details">
+          <summary>Technical output <span class="dim">(for troubleshooting)</span></summary>
+          <div class="term">
+            <div class="term-bar">
+              <span class="term-title">run_all.sh</span>
+              <span class="term-actions"><button type="button" id="clear-terminal" class="term-btn">clear</button></span>
+            </div>
+            <pre id="terminal-output" class="term-out" tabindex="0" aria-label="Benchmark output"><span class="t-dim"># output appears here while a run is active</span></pre>
+          </div>
+        </details>
       </div>
     </section>
 
@@ -104,12 +142,12 @@
     <section id="groups" class="section" aria-labelledby="groups-title">
       <div class="section-head with-tools">
         <div>
-          <h2 id="groups-title">Every language, group by group</h2>
-          <p>Each panel ranks all 13 languages on one algorithm group. Hover a language to follow it across panels.</p>
+          <h2 id="groups-title">Results by test type</h2>
+          <p>Each box ranks the languages on one kind of test. Point at a language to follow it across all boxes.</p>
         </div>
-        <div class="seg" role="radiogroup" aria-label="Group metric">
-          <button type="button" role="radio" aria-checked="true" data-metric="score">points</button>
-          <button type="button" role="radio" aria-checked="false" data-metric="ms">milliseconds</button>
+        <div class="seg" role="radiogroup" aria-label="Show values as">
+          <button type="button" role="radio" aria-checked="true" data-metric="score">Score</button>
+          <button type="button" role="radio" aria-checked="false" data-metric="ms">Time (ms)</button>
         </div>
       </div>
       <div class="group-grid" id="group-grid"></div>
@@ -118,18 +156,18 @@
     <!-- ============ DATA ============ -->
     <section id="data" class="section" aria-labelledby="data-title">
       <div class="section-head">
-        <h2 id="data-title">Results files</h2>
-        <p>Load a results file from another machine, paste output, or export a CSV report.</p>
+        <h2 id="data-title">Files</h2>
+        <p>Save your results as a spreadsheet (CSV), or open results from another computer to compare.</p>
       </div>
       <div class="data-grid">
         <div class="data-actions">
-          <label class="btn" for="results-file">Import results.txt</label><input id="results-file" type="file" accept=".txt,text/plain" hidden>
-          <label class="btn" for="status-file">Import build_status.txt</label><input id="status-file" type="file" accept=".txt,text/plain" hidden>
-          <button class="btn btn-solid" id="export-data" type="button">Export CSV</button>
+          <button class="btn btn-solid" id="export-data" type="button">Download as spreadsheet (CSV)</button>
+          <label class="btn" for="results-file" tabindex="0">Open results.txt</label><input id="results-file" type="file" accept=".txt,text/plain" hidden>
+          <label class="btn" for="status-file" tabindex="0">Open build_status.txt</label><input id="status-file" type="file" accept=".txt,text/plain" hidden>
         </div>
         <div class="paste">
           <textarea id="paste" rows="4" spellcheck="false" placeholder="HOTLOOP|Rust|sorting|42.793|1|1160004208"></textarea>
-          <button class="btn" id="load-paste" type="button">Load pasted output</button>
+          <button class="btn" id="load-paste" type="button">Show pasted results</button>
           <p class="import-message" id="import-message" role="status" aria-live="polite"></p>
         </div>
         <div class="est-note">
