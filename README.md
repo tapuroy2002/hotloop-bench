@@ -16,8 +16,10 @@ produce the same checksums. A group with a wrong checksum scores almost zero.
     ./run_all.sh c rust go    # only some
 
 Each language runs 3 rounds, alternating between languages, and each group keeps its best time over the rounds, so a
-slow moment from a background app or the CPU clocking down does not change the score (on a busy laptop single rounds
-differed by up to 60%, the combined score by about 2%). Inside a round each group gets one untimed warm-up run, then at
+slow moment from a background app or the CPU clocking down does not change the score. On a busy laptop, single rounds
+differed by up to 60%, while runs made back to back scored within about 2% of each other (JavaScript: 213, 214, 217).
+Runs made hours apart still differed more (JavaScript: 213 to 252, about 17%), because background load that lasts the
+whole run slows every round. Compare scores from the same session, on a quiet computer. Inside a round each group gets one untimed warm-up run, then at
 least 3 timed runs within 1.5 s. `HOTLOOP_ROUNDS=1 ./run_all.sh` gives a quicker, less steady run. If rounds differ by more
 than 15%, the run prints a warning: close heavy apps (builds, IDEs) and keep the charger plugged in.
 

@@ -20,8 +20,10 @@
 - Each group now gets one untimed warm-up run, then at least 3 timed runs (time budget 1.5 s instead of 0.4 s). This
   changes the generator for all 13 languages; regenerated sources differ only in those 2 timing lines.
 - `run_all.sh` runs every language 3 rounds (`HOTLOOP_ROUNDS`), alternating languages; `combine_rounds.js` keeps the best
-  time per group and recomputes the score. Before, three JavaScript runs on the same laptop scored 164 to 212; after,
-  213 to 217. A `# consistency` line per language records the round scores, and a warning is printed above 15% spread.
+  time per group and recomputes the score. Before, five back-to-back JavaScript runs on the same laptop scored 164 to 212;
+  after, three back-to-back runs scored 213 to 217. Runs hours apart still ranged 213 to 252, since background load that
+  lasts a whole run cannot be filtered out. A `# consistency` line per language records the round scores, and a warning
+  is printed above 15% spread.
 - Dashboard: the progress bar counts all rounds and shows which round is running.
 - New **Overall score** card: one number for the machine (geometric mean of the 12 reference languages).
 - C# without a .NET SDK (runtime only) is reported as unavailable, not as a build failure.
