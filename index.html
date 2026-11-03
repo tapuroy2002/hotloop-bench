@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0a0d0c">
+  <title>hotloop — language benchmark</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%234be38a'/%3E%3Ctext x='16' y='21' font-family='monospace' font-size='14' font-weight='700' text-anchor='middle' fill='%2304170c'%3E%26gt;_%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="#board" aria-label="hotloop, back to top"><span class="brand-mark" aria-hidden="true">&gt;_</span><span class="brand-name">hotloop</span><span class="cursor" aria-hidden="true"></span></a>
+    <nav class="tabs" aria-label="Sections">
+      <a href="#board" class="tab is-active" data-scramble><span class="tab-key">1</span>board</a>
+      <a href="#run" class="tab" data-scramble><span class="tab-key">2</span>run</a>
+      <a href="#groups" class="tab" data-scramble><span class="tab-key">3</span>groups</a>
+      <a href="#data" class="tab" data-scramble><span class="tab-key">4</span>data</a>
+    </nav>
+    <button class="icon-btn" id="refresh" type="button" title="Reload results.txt and build_status.txt" aria-label="Reload results">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v5h-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square"/></svg>
+    </button>
+  </header>
+
+  <main>
+    <!-- ============ BOARD ============ -->
+    <section id="board" class="section board" aria-labelledby="board-title">
+      <div class="board-head">
+        <div>
+          <p class="prompt"><span class="p-user">you</span>@<span class="p-host">hotloop</span>:<span class="p-path">~/bench</span>$ ./leaderboard</p>
+          <h1 id="board-title">Language benchmark</h1>
+          <p class="lede">One generated program, 8 algorithm groups, 13 languages. Every run is checked by checksum. 1000 points equals C&nbsp;-O2 speed on the calibration machine.</p>
+        </div>
+        <p class="run-stamp" id="run-date"></p>
+      </div>
+
+      <dl class="kpis" id="kpis" aria-label="Summary"></dl>
+
+      <div class="board-panel">
+        <div class="board-tools">
+          <label class="field search"><span aria-hidden="true">/</span><input id="search" type="search" placeholder="Filter languages" autocomplete="off" aria-label="Filter languages"></label>
+          <div class="seg" role="radiogroup" aria-label="Sort leaderboard">
+            <button type="button" role="radio" aria-checked="true" data-sort="score">Score</button>
+            <button type="button" role="radio" aria-checked="false" data-sort="name">Name</button>
+            <button type="button" role="radio" aria-checked="false" data-sort="status">Source</button>
+          </div>
+          <span class="spacer"></span>
+          <label class="toggle"><input type="checkbox" id="show-est" checked><span class="toggle-box" aria-hidden="true"></span>Show estimates</label>
+        </div>
+        <div class="h-head" aria-hidden="true"><span class="h-rank">#</span><span>Language</span><span>Relative speed</span><span class="num">Score</span><span class="num">Source</span><span></span></div>
+        <div class="histo" id="histo" role="list" aria-label="Leaderboard"></div>
+      </div>
+
+      <p class="legend">
+        <span><i class="sw sw-measured"></i>Measured on this machine</span>
+        <span><i class="sw sw-est"></i>Estimated from the reference run, scaled to this machine</span>
+        <span><i class="sw sw-fail"></i>Checksum or build failed</span>
+      </p>
+    </section>
+
+    <!-- ============ RUN ============ -->
+    <section id="run" class="section" aria-labelledby="run-title">
+      <div class="section-head">
+        <h2 id="run-title">Run the benchmark</h2>
+        <p>Pick languages, then run. Each one builds, then runs alone so timings stay clean.</p>
+      </div>
+
+      <div class="term" id="console">
+        <div class="term-bar">
+          <span class="term-title">bash — run_all.sh</span>
+          <span class="term-actions">
+            <button type="button" id="stop-run" class="term-btn danger" hidden>stop</button>
+            <button type="button" id="clear-terminal" class="term-btn">clear</button>
+          </span>
+        </div>
+
+        <div class="cmdline">
+          <span class="ps1">$</span> <span class="cmd">./run_all.sh</span>
+          <div class="picker" id="language-picker" role="group" aria-label="Languages to run"></div>
+        </div>
+        <div class="cmd-presets">
+          <span class="dim">select:</span>
+          <button type="button" class="link-btn" data-preset="all">all</button>
+          <button type="button" class="link-btn" data-preset="ready">ready to run</button>
+          <button type="button" class="link-btn" data-preset="none">none</button>
+          <span class="spacer"></span>
+          <button type="button" id="run-button" class="run-btn"><span class="run-key" aria-hidden="true">⏎</span><span class="run-label">Run benchmark</span></button>
+        </div>
+
+        <div class="progress" id="progress" hidden>
+          <div class="progress-text"><span id="progress-label">starting</span><span id="progress-count"></span></div>
+          <div class="progress-bar" aria-hidden="true"><i id="progress-fill"></i></div>
+        </div>
+
+        <pre id="terminal-output" class="term-out" tabindex="0" aria-label="Benchmark output"><span class="t-dim"># output appears here while a run is active</span></pre>
+        <div class="run-message" id="run-message" role="status" aria-live="polite"></div>
+      </div>
+    </section>
+
+    <!-- ============ GROUPS ============ -->
+    <section id="groups" class="section" aria-labelledby="groups-title">
+      <div class="section-head with-tools">
+        <div>
+          <h2 id="groups-title">Every language, group by group</h2>
+          <p>Each panel ranks all 13 languages on one algorithm group. Hover a language to follow it across panels.</p>
+        </div>
+        <div class="seg" role="radiogroup" aria-label="Group metric">
+          <button type="button" role="radio" aria-checked="true" data-metric="score">points</button>
+          <button type="button" role="radio" aria-checked="false" data-metric="ms">milliseconds</button>
+        </div>
+      </div>
+      <div class="group-grid" id="group-grid"></div>
+    </section>
+
+    <!-- ============ DATA ============ -->
+    <section id="data" class="section" aria-labelledby="data-title">
+      <div class="section-head">
+        <h2 id="data-title">Results files</h2>
+        <p>Load a results file from another machine, paste output, or export a CSV report.</p>
+      </div>
+      <div class="data-grid">
+        <div class="data-actions">
+          <label class="btn" for="results-file">Import results.txt</label><input id="results-file" type="file" accept=".txt,text/plain" hidden>
+          <label class="btn" for="status-file">Import build_status.txt</label><input id="status-file" type="file" accept=".txt,text/plain" hidden>
+          <button class="btn btn-solid" id="export-data" type="button">Export CSV</button>
+        </div>
+        <div class="paste">
+          <textarea id="paste" rows="4" spellcheck="false" placeholder="HOTLOOP|Rust|sorting|42.793|1|1160004208"></textarea>
+          <button class="btn" id="load-paste" type="button">Load pasted output</button>
+          <p class="import-message" id="import-message" role="status" aria-live="polite"></p>
+        </div>
+        <div class="est-note">
+          <h3>How estimates work</h3>
+          <p>A reference run of every language ships with this dashboard (<span id="ref-machine">reference machine</span>). Languages you run here give your machine's speed relative to that run, group by group. A language you can't build here shows its reference time scaled by that ratio.</p>
+          <p>Estimates are guides, not measurements. Install the toolchain and run it to get a real number.</p>
+        </div>
+      </div>
+    </section>
+
+    <footer class="foot">
+      <span>hotloop runs entirely on this computer. Nothing is uploaded.</span>
+      <span>Keys: 1–4 sections, / filter</span>
+    </footer>
+  </main>
+
+  <!-- tmux-style status bar -->
+  <div class="statusbar" aria-live="off">
+    <span class="sb-seg sb-session">hotloop</span>
+    <span class="sb-seg" id="connection"><i class="sb-dot"></i><span id="connection-state">checking runner</span></span>
+    <span class="sb-seg sb-state" id="sb-state">idle</span>
+    <span class="sb-fill"></span>
+    <span class="sb-seg sb-clock" id="sb-clock"></span>
+  </div>
+
+  <div class="toasts" id="toasts" aria-live="polite"></div>
+
+  <script src="reference.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,396 @@
+// ===== Search, backtracking and grids =====
+fn int queens_rec(int full, int cols, int left, int right) {
+    if (cols == full) {
+        return 1;
+    }
+    int count = 0;
+    int avail = full ^ ((cols | left | right) & full);
+    while (avail != 0) {
+        int bit = avail - (avail & (avail - 1));
+        avail = avail ^ bit;
+        count = count + queens_rec(full, cols | bit, ((left | bit) * 2) & full, (right | bit) / 2);
+    }
+    return count;
+}
+
+fn int popcount(int x) {
+    int c = 0;
+    int v = x;
+    while (v != 0) {
+        v = v & (v - 1);
+        c = c + 1;
+    }
+    return c;
+}
+
+fn void fill_row(int[] cells, int row, int digits) {
+    int v = digits;
+    for c in 0..9 {
+        cells[row * 9 + 8 - c] = v % 10;
+        v = v / 10;
+    }
+}
+
+fn int sudoku_solve(int[] cells, int[] rows, int[] cols, int[] boxes) {
+    int best = -1;
+    int best_mask = 0;
+    int best_count = 10;
+    for i in 0..81 {
+        if (cells[i] == 0 && best_count > 1) {
+            int r = i / 9;
+            int c = i % 9;
+            int b = (r / 3) * 3 + c / 3;
+            int mask = 1022 ^ ((rows[r] | cols[c] | boxes[b]) & 1022);
+            int cnt = popcount(mask);
+            if (cnt < best_count) {
+                best = i;
+                best_mask = mask;
+                best_count = cnt;
+            }
+        }
+    }
+    if (best == -1) {
+        return 1;
+    }
+    int r = best / 9;
+    int c = best % 9;
+    int b = (r / 3) * 3 + c / 3;
+    for v in 1..10 {
+        int bit = 1 << v;
+        if ((best_mask & bit) != 0) {
+            cells[best] = v;
+            rows[r] = rows[r] | bit;
+            cols[c] = cols[c] | bit;
+            boxes[b] = boxes[b] | bit;
+            if (sudoku_solve(cells, rows, cols, boxes) == 1) {
+                return 1;
+            }
+            cells[best] = 0;
+            rows[r] = rows[r] ^ bit;
+            cols[c] = cols[c] ^ bit;
+            boxes[b] = boxes[b] ^ bit;
+        }
+    }
+    return 0;
+}
+
+fn int sudoku_valid(int[] cells) {
+    for i in 0..9 {
+        int rs = 0;
+        int cs = 0;
+        int bs = 0;
+        for j in 0..9 {
+            rs = rs | (1 << cells[i * 9 + j]);
+            cs = cs | (1 << cells[j * 9 + i]);
+            int br = (i / 3) * 3 + j / 3;
+            int bc = (i % 3) * 3 + j % 3;
+            bs = bs | (1 << cells[br * 9 + bc]);
+        }
+        if (rs != 1022 || cs != 1022 || bs != 1022) {
+            return 0;
+        }
+    }
+    return 1;
+}
+
+fn int permutation_checksum(int n) {
+    int[] a = new_int(n);
+    int[] c = new_int(n);
+    for i in 0..n {
+        a[i] = i;
+    }
+    int h = mix(0, a[0] * 31 + a[n - 1]);
+    int count = 1;
+    int i = 0;
+    while (i < n) {
+        if (c[i] < i) {
+            if (i % 2 == 0) {
+                swap(a, 0, i);
+            } else {
+                swap(a, c[i], i);
+            }
+            h = mix(h, a[0] * 31 + a[n - 1]);
+            count = count + 1;
+            c[i] = c[i] + 1;
+            i = 0;
+        } else {
+            c[i] = 0;
+            i = i + 1;
+        }
+    }
+    return mix(h, count);
+}
+
+fn int subset_walk(int[] vals, int index, int remaining) {
+    if (remaining == 0) {
+        return 1;
+    }
+    if (index == len(vals) || remaining < 0) {
+        return 0;
+    }
+    return subset_walk(vals, index + 1, remaining - vals[index]) + subset_walk(vals, index + 1, remaining);
+}
+
+fn int color_rec(int[] adj, int[] colors, int n, int v, int k) {
+    if (v == n) {
+        return 1;
+    }
+    int total = 0;
+    for c in 0..k {
+        int usable = 1;
+        for u in 0..v {
+            if (adj[v * n + u] == 1 && colors[u] == c) {
+                usable = 0;
+            }
+        }
+        if (usable == 1) {
+            colors[v] = c;
+            total = total + color_rec(adj, colors, n, v + 1, k);
+        }
+    }
+    return total;
+}
+
+fn int grid_bfs(int[] grid, int size) {
+    int total = size * size;
+    int[] dist = new_int(total);
+    int[] queue = new_int(total);
+    for i in 0..total {
+        dist[i] = -1;
+    }
+    int qh = 0;
+    int qt = 1;
+    dist[0] = 0;
+    queue[0] = 0;
+    while (qh < qt) {
+        int cur = queue[qh];
+        qh = qh + 1;
+        int x = cur % size;
+        int y = cur / size;
+        for dir in 0..4 {
+            int nx = x;
+            int ny = y;
+            if (dir == 0) {
+                nx = x + 1;
+            } else if (dir == 1) {
+                nx = x - 1;
+            } else if (dir == 2) {
+                ny = y + 1;
+            } else {
+                ny = y - 1;
+            }
+            if (nx >= 0 && nx < size && ny >= 0 && ny < size) {
+                int nxt = ny * size + nx;
+                if (grid[nxt] == 0 && dist[nxt] == -1) {
+                    dist[nxt] = dist[cur] + 1;
+                    queue[qt] = nxt;
+                    qt = qt + 1;
+                }
+            }
+        }
+    }
+    return dist[total - 1];
+}
+
+fn int grid_astar(int[] grid, int size) {
+    int total = size * size;
+    int inf = 1000000000;
+    int[] g = new_int(total);
+    int[] closed = new_int(total);
+    for i in 0..total {
+        g[i] = inf;
+    }
+    int[] keys = new_int(4 * total + 8);
+    int[] vals = new_int(4 * total + 8);
+    int[] out = new_int(2);
+    int hsize = 0;
+    g[0] = 0;
+    int h0 = 2 * (size - 1);
+    hsize = heap_push(keys, vals, hsize, h0, 0);
+    while (hsize > 0) {
+        hsize = heap_pop(keys, vals, hsize, out);
+        int cur = out[1];
+        if (cur == total - 1) {
+            return g[cur];
+        }
+        if (closed[cur] == 0) {
+            closed[cur] = 1;
+            int x = cur % size;
+            int y = cur / size;
+            for dir in 0..4 {
+                int nx = x;
+                int ny = y;
+                if (dir == 0) {
+                    nx = x + 1;
+                } else if (dir == 1) {
+                    nx = x - 1;
+                } else if (dir == 2) {
+                    ny = y + 1;
+                } else {
+                    ny = y - 1;
+                }
+                if (nx >= 0 && nx < size && ny >= 0 && ny < size) {
+                    int nxt = ny * size + nx;
+                    if (grid[nxt] == 0 && g[cur] + 1 < g[nxt]) {
+                        g[nxt] = g[cur] + 1;
+                        int est = g[nxt] + (size - 1 - nx) + (size - 1 - ny);
+                        hsize = heap_push(keys, vals, hsize, est, nxt);
+                    }
+                }
+            }
+        }
+    }
+    return -1;
+}
+
+fn int flood_regions(int[] grid, int size) {
+    int total = size * size;
+    int[] seen = new_int(total);
+    int[] stack = new_int(total + 1);
+    int regions = 0;
+    for start in 0..total {
+        if (grid[start] == 0 && seen[start] == 0) {
+            regions = regions + 1;
+            int sp = 1;
+            stack[0] = start;
+            seen[start] = 1;
+            while (sp > 0) {
+                sp = sp - 1;
+                int cur = stack[sp];
+                int x = cur % size;
+                int y = cur / size;
+                for dir in 0..4 {
+                    int nx = x;
+                    int ny = y;
+                    if (dir == 0) {
+                        nx = x + 1;
+                    } else if (dir == 1) {
+                        nx = x - 1;
+                    } else if (dir == 2) {
+                        ny = y + 1;
+                    } else {
+                        ny = y - 1;
+                    }
+                    if (nx >= 0 && nx < size && ny >= 0 && ny < size) {
+                        int nxt = ny * size + nx;
+                        if (grid[nxt] == 0 && seen[nxt] == 0) {
+                            seen[nxt] = 1;
+                            stack[sp] = nxt;
+                            sp = sp + 1;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    return regions;
+}
+
+fn void life_step(int[] cur, int[] next_gen, int size) {
+    for y in 0..size {
+        for x in 0..size {
+            int neighbors = 0;
+            for dy in 0..3 {
+                for dx in 0..3 {
+                    if (dx != 1 || dy != 1) {
+                        int yy = (y + dy + size - 1) % size;
+                        int xx = (x + dx + size - 1) % size;
+                        neighbors = neighbors + cur[yy * size + xx];
+                    }
+                }
+            }
+            int alive = cur[y * size + x];
+            int born = 0;
+            if (neighbors == 3 || (alive == 1 && neighbors == 2)) {
+                born = 1;
+            }
+            next_gen[y * size + x] = born;
+        }
+    }
+}
+
+fn int group_search() {
+    reset_seed(71);
+    int h = 0;
+    int q = queens_rec(2047, 0, 0, 0);
+    ok(same(q, 2680));
+    h = mix(h, q);
+
+    int[] cells = new_int(81);
+    fill_row(cells, 0, 800000000);
+    fill_row(cells, 1, 3600000);
+    fill_row(cells, 2, 70090200);
+    fill_row(cells, 3, 50007000);
+    fill_row(cells, 4, 45700);
+    fill_row(cells, 5, 100030);
+    fill_row(cells, 6, 1000068);
+    fill_row(cells, 7, 8500010);
+    fill_row(cells, 8, 90000400);
+    int[] rows = new_int(9);
+    int[] cols = new_int(9);
+    int[] boxes = new_int(9);
+    for i in 0..81 {
+        int d = cells[i];
+        if (d != 0) {
+            int bit = 1 << d;
+            rows[i / 9] = rows[i / 9] | bit;
+            cols[i % 9] = cols[i % 9] | bit;
+            boxes[(i / 27) * 3 + (i % 9) / 3] = boxes[(i / 27) * 3 + (i % 9) / 3] | bit;
+        }
+    }
+    int solved = sudoku_solve(cells, rows, cols, boxes);
+    ok(solved);
+    ok(sudoku_valid(cells));
+    ok(same(cells[0], 8));
+    h = mix(h, checksum(cells));
+
+    h = mix(h, permutation_checksum(9));
+
+    int[] vals = random_array(21, 20);
+    for i in 0..21 {
+        vals[i] = vals[i] + 1;
+    }
+    h = mix(h, subset_walk(vals, 0, 80));
+
+    int cn = 12;
+    int[] adj = new_int(cn * cn);
+    for i in 0..cn * 2 {
+        int u = rnd_int(cn);
+        int v = rnd_int(cn);
+        if (u != v) {
+            adj[u * cn + v] = 1;
+            adj[v * cn + u] = 1;
+        }
+    }
+    int[] colors = new_int(cn);
+    h = mix(h, color_rec(adj, colors, cn, 0, 3));
+
+    int gs = 260;
+    int[] grid = new_int(gs * gs);
+    for i in 0..gs * gs {
+        if (rnd_int(100) < 28) {
+            grid[i] = 1;
+        }
+    }
+    grid[0] = 0;
+    grid[gs * gs - 1] = 0;
+    int by_bfs = grid_bfs(grid, gs);
+    int by_astar = grid_astar(grid, gs);
+    ok(same(by_bfs, by_astar));
+    h = mix(mix(h, by_bfs), flood_regions(grid, gs));
+
+    int ls = 128;
+    int[] board = new_int(ls * ls);
+    int[] spare = new_int(ls * ls);
+    for i in 0..ls * ls {
+        if (rnd_int(100) < 35) {
+            board[i] = 1;
+        }
+    }
+    for gen in 0..60 {
+        life_step(board, spare, ls);
+        copy_into(board, spare);
+    }
+    h = mix(h, checksum(board));
+    return h;
+}

@@ -1,0 +1,40 @@
+// ===== Sorting indices by key (stable merge sort) =====
+fn void merge_idx(int[] idx, int[] key, int[] aux, int lo, int hi) {
+    if (hi - lo < 2) {
+        return;
+    }
+    int mid = (lo + hi) / 2;
+    merge_idx(idx, key, aux, lo, mid);
+    merge_idx(idx, key, aux, mid, hi);
+    int i = lo;
+    int j = mid;
+    int k = lo;
+    while (i < mid && j < hi) {
+        if (key[idx[i]] <= key[idx[j]]) {
+            aux[k] = idx[i];
+            i = i + 1;
+        } else {
+            aux[k] = idx[j];
+            j = j + 1;
+        }
+        k = k + 1;
+    }
+    while (i < mid) {
+        aux[k] = idx[i];
+        i = i + 1;
+        k = k + 1;
+    }
+    while (j < hi) {
+        aux[k] = idx[j];
+        j = j + 1;
+        k = k + 1;
+    }
+    for t in lo..hi {
+        idx[t] = aux[t];
+    }
+}
+
+fn void sort_by_key(int[] idx, int[] key) {
+    int[] aux = new_int(len(idx));
+    merge_idx(idx, key, aux, 0, len(idx));
+}

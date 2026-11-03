@@ -1,0 +1,415 @@
+// ===== String algorithms (text is an array of small integers) =====
+const int MODP = 9999991;
+
+fn void kmp_table(int[] p, int[] table) {
+    int k = 0;
+    for i in 1..len(p) {
+        while (k > 0 && p[i] != p[k]) {
+            k = table[k - 1];
+        }
+        if (p[i] == p[k]) {
+            k = k + 1;
+        }
+        table[i] = k;
+    }
+}
+
+fn int kmp_count(int[] text, int[] p) {
+    int m = len(p);
+    int[] table = new_int(m);
+    kmp_table(p, table);
+    int k = 0;
+    int found = 0;
+    for i in 0..len(text) {
+        while (k > 0 && text[i] != p[k]) {
+            k = table[k - 1];
+        }
+        if (text[i] == p[k]) {
+            k = k + 1;
+        }
+        if (k == m) {
+            found = found + 1;
+            k = table[k - 1];
+        }
+    }
+    return found;
+}
+
+fn void z_function(int[] s, int[] z) {
+    int n = len(s);
+    int l = 0;
+    int r = 0;
+    for i in 1..n {
+        if (i < r) {
+            z[i] = min_int(r - i, z[i - l]);
+        }
+        while (i + z[i] < n && s[z[i]] == s[i + z[i]]) {
+            z[i] = z[i] + 1;
+        }
+        if (i + z[i] > r) {
+            l = i;
+            r = i + z[i];
+        }
+    }
+}
+
+fn int z_count(int[] text, int[] p) {
+    int m = len(p);
+    int n = len(text);
+    int[] combo = new_int(m + 1 + n);
+    for i in 0..m {
+        combo[i] = p[i];
+    }
+    combo[m] = 99;
+    for i in 0..n {
+        combo[m + 1 + i] = text[i];
+    }
+    int[] z = new_int(m + 1 + n);
+    z_function(combo, z);
+    int found = 0;
+    for i in m + 1..m + 1 + n {
+        if (z[i] == m) {
+            found = found + 1;
+        }
+    }
+    return found;
+}
+
+fn int rabin_karp_count(int[] text, int[] p) {
+    int m = len(p);
+    int n = len(text);
+    if (m > n) {
+        return 0;
+    }
+    int base = 131;
+    int power = 1;
+    for i in 1..m {
+        power = (power * base) % MODP;
+    }
+    int hp = 0;
+    int ht = 0;
+    for i in 0..m {
+        hp = (hp * base + p[i] + 1) % MODP;
+        ht = (ht * base + text[i] + 1) % MODP;
+    }
+    int found = 0;
+    int pos = 0;
+    while (pos + m <= n) {
+        if (hp == ht) {
+            int hit = 1;
+            for j in 0..m {
+                if (text[pos + j] != p[j]) {
+                    hit = 0;
+                }
+            }
+            found = found + hit;
+        }
+        if (pos + m < n) {
+            ht = (ht + MODP - ((text[pos] + 1) * power) % MODP) % MODP;
+            ht = (ht * base + text[pos + m] + 1) % MODP;
+        }
+        pos = pos + 1;
+    }
+    return found;
+}
+
+fn int horspool_count(int[] text, int[] p, int alpha) {
+    int m = len(p);
+    int n = len(text);
+    int[] shift = new_int(alpha);
+    for c in 0..alpha {
+        shift[c] = m;
+    }
+    for i in 0..m - 1 {
+        shift[p[i]] = m - 1 - i;
+    }
+    int found = 0;
+    int pos = 0;
+    while (pos + m <= n) {
+        int j = m - 1;
+        while (j >= 0 && text[pos + j] == p[j]) {
+            j = j - 1;
+        }
+        if (j < 0) {
+            found = found + 1;
+            pos = pos + 1;
+        } else {
+            pos = pos + shift[text[pos + m - 1]];
+        }
+    }
+    return found;
+}
+
+fn int naive_count(int[] text, int[] pats, int from, int to) {
+    int m = to - from;
+    int found = 0;
+    for pos in 0..len(text) - m + 1 {
+        int hit = 1;
+        for j in 0..m {
+            if (text[pos + j] != pats[from + j]) {
+                hit = 0;
+            }
+        }
+        found = found + hit;
+    }
+    return found;
+}
+
+fn int manacher(int[] s) {
+    int n = len(s);
+    int m = 2 * n + 1;
+    int[] t = new_int(m);
+    for i in 0..m {
+        t[i] = -1;
+    }
+    for i in 0..n {
+        t[2 * i + 1] = s[i];
+    }
+    int[] p = new_int(m);
+    int center = 0;
+    int right = 0;
+    int best = 0;
+    for i in 0..m {
+        if (i < right) {
+            p[i] = min_int(right - i, p[2 * center - i]);
+        }
+        while (i - 1 - p[i] >= 0 && i + 1 + p[i] < m && t[i - 1 - p[i]] == t[i + 1 + p[i]]) {
+            p[i] = p[i] + 1;
+        }
+        if (i + p[i] > right) {
+            center = i;
+            right = i + p[i];
+        }
+        if (p[i] > best) {
+            best = p[i];
+        }
+    }
+    return best;
+}
+
+fn int palindrome_brute(int[] s) {
+    int n = len(s);
+    int best = 0;
+    for c in 0..n {
+        int lo = c;
+        int hi = c;
+        while (lo >= 0 && hi < n && s[lo] == s[hi]) {
+            lo = lo - 1;
+            hi = hi + 1;
+        }
+        best = max_int(best, hi - lo - 1);
+        lo = c;
+        hi = c + 1;
+        while (lo >= 0 && hi < n && s[lo] == s[hi]) {
+            lo = lo - 1;
+            hi = hi + 1;
+        }
+        best = max_int(best, hi - lo - 1);
+    }
+    return best;
+}
+
+fn void suffix_array(int[] s, int[] sa) {
+    int n = len(s);
+    int[] rank = new_int(n);
+    int[] next_rank = new_int(n);
+    int[] key = new_int(n);
+    for i in 0..n {
+        rank[i] = s[i];
+        sa[i] = i;
+    }
+    int base = n + 130;
+    int k = 1;
+    int going = 1;
+    while (going == 1) {
+        for i in 0..n {
+            int second = 0;
+            if (i + k < n) {
+                second = rank[i + k] + 1;
+            }
+            key[i] = rank[i] * base + second;
+        }
+        sort_by_key(sa, key);
+        next_rank[sa[0]] = 0;
+        for i in 1..n {
+            int add = 0;
+            if (key[sa[i]] != key[sa[i - 1]]) {
+                add = 1;
+            }
+            next_rank[sa[i]] = next_rank[sa[i - 1]] + add;
+        }
+        for i in 0..n {
+            rank[i] = next_rank[i];
+        }
+        if (rank[sa[n - 1]] == n - 1) {
+            going = 0;
+        }
+        k = k * 2;
+    }
+}
+
+fn void kasai(int[] s, int[] sa, int[] lcp) {
+    int n = len(s);
+    int[] rank = new_int(n);
+    for i in 0..n {
+        rank[sa[i]] = i;
+    }
+    int k = 0;
+    for i in 0..n {
+        if (rank[i] == n - 1) {
+            k = 0;
+        } else {
+            int j = sa[rank[i] + 1];
+            while (i + k < n && j + k < n && s[i + k] == s[j + k]) {
+                k = k + 1;
+            }
+            lcp[rank[i]] = k;
+            if (k > 0) {
+                k = k - 1;
+            }
+        }
+    }
+}
+
+fn int suffix_less(int[] s, int a, int b) {
+    int n = len(s);
+    int i = a;
+    int j = b;
+    while (i < n && j < n) {
+        if (s[i] != s[j]) {
+            if (s[i] < s[j]) {
+                return 1;
+            }
+            return 0;
+        }
+        i = i + 1;
+        j = j + 1;
+    }
+    if (i == n) {
+        return 1;
+    }
+    return 0;
+}
+
+fn int ac_build(int[] go, int[] fail, int[] term, int[] pats, int[] starts, int pcount, int alpha) {
+    int nodes = 1;
+    for p in 0..pcount {
+        int cur = 0;
+        for i in starts[p]..starts[p + 1] {
+            int c = pats[i];
+            if (go[cur * alpha + c] == 0) {
+                go[cur * alpha + c] = nodes;
+                nodes = nodes + 1;
+            }
+            cur = go[cur * alpha + c];
+        }
+        term[cur] = term[cur] + 1;
+    }
+    int[] queue = new_int(nodes + 1);
+    int qh = 0;
+    int qt = 0;
+    for c in 0..alpha {
+        int v = go[c];
+        if (v != 0) {
+            queue[qt] = v;
+            qt = qt + 1;
+        }
+    }
+    while (qh < qt) {
+        int u = queue[qh];
+        qh = qh + 1;
+        term[u] = term[u] + term[fail[u]];
+        for c in 0..alpha {
+            int v = go[u * alpha + c];
+            if (v != 0) {
+                fail[v] = go[fail[u] * alpha + c];
+                queue[qt] = v;
+                qt = qt + 1;
+            } else {
+                go[u * alpha + c] = go[fail[u] * alpha + c];
+            }
+        }
+    }
+    return nodes;
+}
+
+fn int ac_count(int[] go, int[] term, int[] text, int alpha) {
+    int cur = 0;
+    int total = 0;
+    for i in 0..len(text) {
+        cur = go[cur * alpha + text[i]];
+        total = total + term[cur];
+    }
+    return total;
+}
+
+fn int group_strings() {
+    reset_seed(53);
+    int h = 0;
+    int alpha = 3;
+    int[] text = random_text(250000, alpha);
+    int pcount = 6;
+    int[] pats = new_int(40);
+    int[] starts = new_int(pcount + 1);
+    int fill = 0;
+    for p in 0..pcount {
+        starts[p] = fill;
+        int plen = 3 + rnd_int(4);
+        for i in 0..plen {
+            pats[fill] = rnd_int(alpha);
+            fill = fill + 1;
+        }
+    }
+    starts[pcount] = fill;
+    int naive_total = 0;
+    for p in 0..pcount {
+        int[] pat = new_int(starts[p + 1] - starts[p]);
+        for i in 0..len(pat) {
+            pat[i] = pats[starts[p] + i];
+        }
+        int c1 = kmp_count(text, pat);
+        ok(same(c1, z_count(text, pat)));
+        ok(same(c1, rabin_karp_count(text, pat)));
+        ok(same(c1, horspool_count(text, pat, alpha)));
+        int from = starts[p];
+        int upto = starts[p + 1];
+        ok(same(c1, naive_count(text, pats, from, upto)));
+        naive_total = naive_total + c1;
+        h = mix(h, c1);
+    }
+    int[] go = new_int((fill + 1) * alpha);
+    int[] fail = new_int(fill + 1);
+    int[] term = new_int(fill + 1);
+    int nodes = ac_build(go, fail, term, pats, starts, pcount, alpha);
+    int ac_total = ac_count(go, term, text, alpha);
+    ok(same(ac_total, naive_total));
+    h = mix(mix(h, nodes), ac_total);
+
+    int[] pal = random_text(80000, 2);
+    int longest = manacher(pal);
+    int[] small_pal = random_text(1500, 2);
+    ok(same(manacher(small_pal), palindrome_brute(small_pal)));
+    h = mix(h, longest);
+
+    int sn = 6000;
+    int[] s = random_text(sn, 4);
+    int[] sa = new_int(sn);
+    suffix_array(s, sa);
+    int sorted = 1;
+    for i in 1..sn {
+        int before = sa[i - 1];
+        int here = sa[i];
+        if (suffix_less(s, before, here) == 0) {
+            sorted = 0;
+        }
+    }
+    ok(sorted);
+    int[] lcp = new_int(sn);
+    kasai(s, sa, lcp);
+    int longest_repeat = 0;
+    for i in 0..sn {
+        longest_repeat = max_int(longest_repeat, lcp[i]);
+    }
+    h = mix(mix(h, checksum(sa)), longest_repeat);
+    return h;
+}

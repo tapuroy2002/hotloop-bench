@@ -1,0 +1,133 @@
+// ===== Hotloop reference program: shared helpers =====
+const int HMOD = 2147483647;
+
+global int seed = 12345;
+global int bad = 0;
+
+fn int get_bad() {
+    return bad;
+}
+
+fn void ok(int c) {
+    if (c == 0) {
+        bad = bad + 1;
+    }
+}
+
+fn void reset_seed(int v) {
+    seed = v;
+}
+
+fn int rnd() {
+    seed = (seed * 48271) % HMOD;
+    return seed;
+}
+
+fn int rnd_int(int limit) {
+    return rnd() % limit;
+}
+
+fn int mix(int h, int v) {
+    int x = v;
+    if (x < 0) {
+        x = 0 - x;
+    }
+    return (h * 1000003 + x % HMOD) % HMOD;
+}
+
+fn void swap(int[] a, int i, int j) {
+    int t = a[i];
+    a[i] = a[j];
+    a[j] = t;
+}
+
+fn int checksum(int[] a) {
+    int h = 7;
+    for i in 0..len(a) {
+        h = mix(h, a[i]);
+    }
+    return h;
+}
+
+fn int[] random_array(int n, int limit) {
+    int[] a = new_int(n);
+    for i in 0..n {
+        a[i] = rnd_int(limit);
+    }
+    return a;
+}
+
+fn int is_sorted(int[] a) {
+    for i in 1..len(a) {
+        if (a[i - 1] > a[i]) {
+            return 0;
+        }
+    }
+    return 1;
+}
+
+fn void copy_into(int[] dst, int[] src) {
+    for i in 0..len(src) {
+        dst[i] = src[i];
+    }
+}
+
+fn int abs_int(int x) {
+    if (x < 0) {
+        return 0 - x;
+    }
+    return x;
+}
+
+fn int min_int(int a, int b) {
+    if (a < b) {
+        return a;
+    }
+    return b;
+}
+
+fn int max_int(int a, int b) {
+    if (a > b) {
+        return a;
+    }
+    return b;
+}
+
+fn int powmod(int base, int e, int m) {
+    int result = 1;
+    int b = base % m;
+    int k = e;
+    while (k > 0) {
+        if (k % 2 == 1) {
+            result = (result * b) % m;
+        }
+        b = (b * b) % m;
+        k = k / 2;
+    }
+    return result;
+}
+
+fn int gcd(int a, int b) {
+    int x = a;
+    int y = b;
+    while (y != 0) {
+        int t = x % y;
+        x = y;
+        y = t;
+    }
+    return x;
+}
+
+fn int same(int a, int b) {
+    if (a == b) {
+        return 1;
+    }
+    return 0;
+}
+
+fn int at_most(int a, int b) {
+    if (a <= b) {
+        return 1;
+    }
+    return 0;
+}

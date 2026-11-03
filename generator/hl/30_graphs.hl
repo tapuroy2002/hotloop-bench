@@ -1,0 +1,714 @@
+// ===== Graph algorithms =====
+// A graph lives in one array. With n nodes and room for m edges the regions are:
+// head[n], next[m], target[m], weight[m], source[m], then the edge count.
+
+fn int[] graph_new(int n, int m) {
+    int[] g = new_int(n + 4 * m + 1);
+    for i in 0..n {
+        g[i] = -1;
+    }
+    return g;
+}
+
+fn void add_edge(int[] g, int n, int m, int u, int v, int w) {
+    int e = g[n + 4 * m];
+    g[n + e] = g[u];
+    g[n + m + e] = v;
+    g[n + 2 * m + e] = w;
+    g[n + 3 * m + e] = u;
+    g[u] = e;
+    g[n + 4 * m] = e + 1;
+}
+
+fn int[] random_graph(int n, int m, int maxw, int both) {
+    int cap = m * (1 + both);
+    int[] g = graph_new(n, cap);
+    for i in 0..m {
+        int u = rnd_int(n);
+        int v = rnd_int(n);
+        int w = 1 + rnd_int(maxw);
+        add_edge(g, n, cap, u, v, w);
+        if (both == 1) {
+            add_edge(g, n, cap, v, u, w);
+        }
+    }
+    return g;
+}
+
+fn int[] random_connected_graph(int n, int extra, int maxw) {
+    int cap = 2 * (n - 1 + extra);
+    int[] g = graph_new(n, cap);
+    for i in 1..n {
+        int p = rnd_int(i);
+        int w = 1 + rnd_int(maxw);
+        add_edge(g, n, cap, i, p, w);
+        add_edge(g, n, cap, p, i, w);
+    }
+    for i in 0..extra {
+        int u = rnd_int(n);
+        int v = rnd_int(n);
+        int w = 1 + rnd_int(maxw);
+        add_edge(g, n, cap, u, v, w);
+        add_edge(g, n, cap, v, u, w);
+    }
+    return g;
+}
+
+fn void bfs(int[] g, int n, int m, int source, int[] dist, int[] queue) {
+    for i in 0..n {
+        dist[i] = -1;
+    }
+    int qh = 0;
+    int qt = 0;
+    dist[source] = 0;
+    queue[qt] = source;
+    qt = qt + 1;
+    while (qh < qt) {
+        int u = queue[qh];
+        qh = qh + 1;
+        int e = g[u];
+        while (e != -1) {
+            int v = g[n + m + e];
+            if (dist[v] == -1) {
+                dist[v] = dist[u] + 1;
+                queue[qt] = v;
+                qt = qt + 1;
+            }
+            e = g[n + e];
+        }
+    }
+}
+
+fn int dfs_checksum(int[] g, int n, int m, int source) {
+    int[] seen = new_int(n);
+    int[] stack = new_int(n + m + 4);
+    int sp = 1;
+    int h = 0;
+    stack[0] = source;
+    while (sp > 0) {
+        sp = sp - 1;
+        int u = stack[sp];
+        if (seen[u] == 0) {
+            seen[u] = 1;
+            h = mix(h, u);
+            int e = g[u];
+            while (e != -1) {
+                int v = g[n + m + e];
+                if (seen[v] == 0) {
+                    stack[sp] = v;
+                    sp = sp + 1;
+                }
+                e = g[n + e];
+            }
+        }
+    }
+    return h;
+}
+
+fn void dijkstra(int[] g, int n, int m, int source, int[] dist) {
+    int inf = 1000000000;
+    for i in 0..n {
+        dist[i] = inf;
+    }
+    int[] keys = new_int(m + n + 4);
+    int[] vals = new_int(m + n + 4);
+    int[] out = new_int(2);
+    int size = 0;
+    dist[source] = 0;
+    size = heap_push(keys, vals, size, 0, source);
+    while (size > 0) {
+        size = heap_pop(keys, vals, size, out);
+        int d = out[0];
+        int u = out[1];
+        if (d <= dist[u]) {
+            int e = g[u];
+            while (e != -1) {
+                int v = g[n + m + e];
+                int nd = d + g[n + 2 * m + e];
+                if (nd < dist[v]) {
+                    dist[v] = nd;
+                    size = heap_push(keys, vals, size, nd, v);
+                }
+                e = g[n + e];
+            }
+        }
+    }
+}
+
+fn void bellman_ford(int[] g, int n, int m, int source, int[] dist) {
+    int inf = 1000000000;
+    for i in 0..n {
+        dist[i] = inf;
+    }
+    dist[source] = 0;
+    int cnt = g[n + 4 * m];
+    int changed = 1;
+    int rounds = 0;
+    while (changed == 1 && rounds < n) {
+        changed = 0;
+        for e in 0..cnt {
+            int u = g[n + 3 * m + e];
+            int v = g[n + m + e];
+            int w = g[n + 2 * m + e];
+            if (dist[u] < inf && dist[u] + w < dist[v]) {
+                dist[v] = dist[u] + w;
+                changed = 1;
+            }
+        }
+        rounds = rounds + 1;
+    }
+}
+
+fn void floyd(int[] g, int n, int m, int[] d) {
+    int inf = 1000000000;
+    for i in 0..n * n {
+        d[i] = inf;
+    }
+    for i in 0..n {
+        d[i * n + i] = 0;
+    }
+    int cnt = g[n + 4 * m];
+    for e in 0..cnt {
+        int u = g[n + 3 * m + e];
+        int v = g[n + m + e];
+        int w = g[n + 2 * m + e];
+        if (w < d[u * n + v]) {
+            d[u * n + v] = w;
+        }
+    }
+    for k in 0..n {
+        for i in 0..n {
+            int dik = d[i * n + k];
+            if (dik < inf) {
+                for j in 0..n {
+                    int alt = dik + d[k * n + j];
+                    if (alt < d[i * n + j]) {
+                        d[i * n + j] = alt;
+                    }
+                }
+            }
+        }
+    }
+}
+
+fn int topo_sort(int[] g, int n, int m, int[] order) {
+    int[] indeg = new_int(n);
+    int cnt = g[n + 4 * m];
+    for e in 0..cnt {
+        int v = g[n + m + e];
+        indeg[v] = indeg[v] + 1;
+    }
+    int[] stack = new_int(n + 1);
+    int sp = 0;
+    for i in 0..n {
+        if (indeg[i] == 0) {
+            stack[sp] = i;
+            sp = sp + 1;
+        }
+    }
+    int k = 0;
+    while (sp > 0) {
+        sp = sp - 1;
+        int u = stack[sp];
+        order[k] = u;
+        k = k + 1;
+        int e = g[u];
+        while (e != -1) {
+            int v = g[n + m + e];
+            indeg[v] = indeg[v] - 1;
+            if (indeg[v] == 0) {
+                stack[sp] = v;
+                sp = sp + 1;
+            }
+            e = g[n + e];
+        }
+    }
+    return k;
+}
+
+fn int dag_longest(int[] g, int n, int m, int[] order, int cnt) {
+    int[] best = new_int(n);
+    int answer = 0;
+    for idx in 0..cnt {
+        int u = order[idx];
+        int e = g[u];
+        while (e != -1) {
+            int v = g[n + m + e];
+            int cand = best[u] + g[n + 2 * m + e];
+            if (cand > best[v]) {
+                best[v] = cand;
+            }
+            e = g[n + e];
+        }
+        answer = max_int(answer, best[u]);
+    }
+    return answer;
+}
+
+fn int kruskal(int[] g, int n, int m, int[] comps_out) {
+    int cnt = g[n + 4 * m];
+    int[] idx = new_int(cnt);
+    int[] key = new_int(cnt);
+    for e in 0..cnt {
+        idx[e] = e;
+        key[e] = g[n + 2 * m + e];
+    }
+    sort_by_key(idx, key);
+    int[] uf = uf_new(n);
+    int total = 0;
+    int comps = n;
+    for t in 0..cnt {
+        int e = idx[t];
+        int u = g[n + 3 * m + e];
+        int v = g[n + m + e];
+        int merged = uf_union(uf, n, u, v);
+        if (merged == 1) {
+            total = total + g[n + 2 * m + e];
+            comps = comps - 1;
+        }
+    }
+    comps_out[0] = comps;
+    return total;
+}
+
+fn int prim(int[] g, int n, int m) {
+    int[] inmst = new_int(n);
+    int[] keys = new_int(m + n + 4);
+    int[] vals = new_int(m + n + 4);
+    int[] out = new_int(2);
+    int size = 0;
+    int total = 0;
+    size = heap_push(keys, vals, size, 0, 0);
+    while (size > 0) {
+        size = heap_pop(keys, vals, size, out);
+        int d = out[0];
+        int u = out[1];
+        if (inmst[u] == 0) {
+            inmst[u] = 1;
+            total = total + d;
+            int e = g[u];
+            while (e != -1) {
+                int v = g[n + m + e];
+                if (inmst[v] == 0) {
+                    size = heap_push(keys, vals, size, g[n + 2 * m + e], v);
+                }
+                e = g[n + e];
+            }
+        }
+    }
+    return total;
+}
+
+fn int tarjan_scc(int[] g, int n, int m) {
+    int[] order = new_int(n);
+    int[] low = new_int(n);
+    int[] onstack = new_int(n);
+    int[] stk = new_int(n + 1);
+    int[] cstack = new_int(n + 1);
+    int[] iter = new_int(n);
+    int counter = 0;
+    int sp = 0;
+    int csp = 0;
+    int comps = 0;
+    for s in 0..n {
+        if (order[s] == 0) {
+            counter = counter + 1;
+            order[s] = counter;
+            low[s] = counter;
+            stk[sp] = s;
+            sp = sp + 1;
+            onstack[s] = 1;
+            cstack[csp] = s;
+            csp = csp + 1;
+            iter[s] = g[s];
+            while (csp > 0) {
+                int u = cstack[csp - 1];
+                int e = iter[u];
+                if (e != -1) {
+                    iter[u] = g[n + e];
+                    int v = g[n + m + e];
+                    if (order[v] == 0) {
+                        counter = counter + 1;
+                        order[v] = counter;
+                        low[v] = counter;
+                        stk[sp] = v;
+                        sp = sp + 1;
+                        onstack[v] = 1;
+                        cstack[csp] = v;
+                        csp = csp + 1;
+                        iter[v] = g[v];
+                    } else if (onstack[v] == 1) {
+                        low[u] = min_int(low[u], order[v]);
+                    }
+                } else {
+                    if (low[u] == order[u]) {
+                        comps = comps + 1;
+                        int going = 1;
+                        while (going == 1) {
+                            sp = sp - 1;
+                            int w = stk[sp];
+                            onstack[w] = 0;
+                            if (w == u) {
+                                going = 0;
+                            }
+                        }
+                    }
+                    csp = csp - 1;
+                    if (csp > 0) {
+                        int parent = cstack[csp - 1];
+                        low[parent] = min_int(low[parent], low[u]);
+                    }
+                }
+            }
+        }
+    }
+    return comps;
+}
+
+fn int scc_by_reachability(int[] d, int n) {
+    int inf = 1000000000;
+    int classes = 0;
+    for i in 0..n {
+        int rep = i;
+        int j = 0;
+        while (j < i) {
+            if (d[i * n + j] < inf && d[j * n + i] < inf) {
+                rep = j;
+                j = i;
+            } else {
+                j = j + 1;
+            }
+        }
+        if (rep == i) {
+            classes = classes + 1;
+        }
+    }
+    return classes;
+}
+
+fn void add_flow_edge(int[] g, int n, int m, int u, int v, int cap) {
+    add_edge(g, n, m, u, v, cap);
+    add_edge(g, n, m, v, u, 0);
+}
+
+fn int dinic_bfs(int[] g, int n, int m, int s, int t, int[] level, int[] queue) {
+    for i in 0..n {
+        level[i] = -1;
+    }
+    int qh = 0;
+    int qt = 1;
+    level[s] = 0;
+    queue[0] = s;
+    while (qh < qt) {
+        int u = queue[qh];
+        qh = qh + 1;
+        int e = g[u];
+        while (e != -1) {
+            int v = g[n + m + e];
+            if (g[n + 2 * m + e] > 0 && level[v] == -1) {
+                level[v] = level[u] + 1;
+                queue[qt] = v;
+                qt = qt + 1;
+            }
+            e = g[n + e];
+        }
+    }
+    return level[t];
+}
+
+fn int dinic_dfs(int[] g, int n, int m, int[] level, int[] cur, int u, int t, int pushed) {
+    if (u == t) {
+        return pushed;
+    }
+    while (cur[u] != -1) {
+        int e = cur[u];
+        int v = g[n + m + e];
+        int cap = g[n + 2 * m + e];
+        if (cap > 0 && level[v] == level[u] + 1) {
+            int got = dinic_dfs(g, n, m, level, cur, v, t, min_int(pushed, cap));
+            if (got > 0) {
+                int rev = e ^ 1;
+                g[n + 2 * m + e] = cap - got;
+                g[n + 2 * m + rev] = g[n + 2 * m + rev] + got;
+                return got;
+            }
+        }
+        cur[u] = g[n + e];
+    }
+    return 0;
+}
+
+fn int max_flow(int[] g, int n, int m, int s, int t) {
+    int[] level = new_int(n);
+    int[] cur = new_int(n);
+    int[] queue = new_int(n + 1);
+    int flow = 0;
+    int going = 1;
+    while (going == 1) {
+        int lt = dinic_bfs(g, n, m, s, t, level, queue);
+        if (lt == -1) {
+            going = 0;
+        } else {
+            for i in 0..n {
+                cur[i] = g[i];
+            }
+            int pushing = 1;
+            while (pushing == 1) {
+                int f = dinic_dfs(g, n, m, level, cur, s, t, 1000000000);
+                if (f == 0) {
+                    pushing = 0;
+                } else {
+                    flow = flow + f;
+                }
+            }
+        }
+    }
+    return flow;
+}
+
+fn int edmonds_karp(int[] g, int n, int m, int s, int t) {
+    int[] pe = new_int(n);
+    int[] queue = new_int(n + 1);
+    int flow = 0;
+    int going = 1;
+    while (going == 1) {
+        for i in 0..n {
+            pe[i] = -2;
+        }
+        pe[s] = -1;
+        int qh = 0;
+        int qt = 1;
+        queue[0] = s;
+        while (qh < qt) {
+            int u = queue[qh];
+            qh = qh + 1;
+            int e = g[u];
+            while (e != -1) {
+                int v = g[n + m + e];
+                if (g[n + 2 * m + e] > 0 && pe[v] == -2) {
+                    pe[v] = e;
+                    queue[qt] = v;
+                    qt = qt + 1;
+                }
+                e = g[n + e];
+            }
+        }
+        if (pe[t] == -2) {
+            going = 0;
+        } else {
+            int bottleneck = 1000000000;
+            int v = t;
+            while (v != s) {
+                int e2 = pe[v];
+                bottleneck = min_int(bottleneck, g[n + 2 * m + e2]);
+                v = g[n + 3 * m + e2];
+            }
+            v = t;
+            while (v != s) {
+                int e3 = pe[v];
+                int rev = e3 ^ 1;
+                g[n + 2 * m + e3] = g[n + 2 * m + e3] - bottleneck;
+                g[n + 2 * m + rev] = g[n + 2 * m + rev] + bottleneck;
+                v = g[n + 3 * m + e3];
+            }
+            flow = flow + bottleneck;
+        }
+    }
+    return flow;
+}
+
+fn int lca_fast(int[] up, int[] depth, int n, int levels, int a, int b) {
+    int x = a;
+    int y = b;
+    if (depth[x] < depth[y]) {
+        int t = x;
+        x = y;
+        y = t;
+    }
+    int diff = depth[x] - depth[y];
+    int k = 0;
+    while (diff > 0) {
+        if (diff % 2 == 1) {
+            x = up[k * n + x];
+        }
+        diff = diff / 2;
+        k = k + 1;
+    }
+    if (x == y) {
+        return x;
+    }
+    int lv = levels - 1;
+    while (lv >= 0) {
+        if (up[lv * n + x] != up[lv * n + y]) {
+            x = up[lv * n + x];
+            y = up[lv * n + y];
+        }
+        lv = lv - 1;
+    }
+    return up[x];
+}
+
+fn int lca_slow(int[] parent, int[] depth, int a, int b) {
+    int x = a;
+    int y = b;
+    while (depth[x] > depth[y]) {
+        x = parent[x];
+    }
+    while (depth[y] > depth[x]) {
+        y = parent[y];
+    }
+    while (x != y) {
+        x = parent[x];
+        y = parent[y];
+    }
+    return x;
+}
+
+fn int group_graphs() {
+    reset_seed(37);
+    int h = 0;
+    int n = 12000;
+    int extra = 48000;
+    int cap = 2 * (n - 1 + extra);
+    int[] g = random_connected_graph(n, extra, 100);
+    int[] dist = new_int(n);
+    int[] queue = new_int(n + 1);
+    bfs(g, n, cap, 0, dist, queue);
+    h = mix(h, checksum(dist));
+    h = mix(h, dfs_checksum(g, n, cap, 0));
+    int[] d1 = new_int(n);
+    dijkstra(g, n, cap, 0, d1);
+    h = mix(h, checksum(d1));
+    int[] comp = new_int(1);
+    int kw = kruskal(g, n, cap, comp);
+    int pw = prim(g, n, cap);
+    ok(same(kw, pw));
+    ok(same(comp[0], 1));
+    h = mix(mix(h, kw), comp[0]);
+
+    int sn = 800;
+    int sm = 6000;
+    int[] sg = random_graph(sn, sm, 50, 0);
+    int[] bf = new_int(sn);
+    int[] dj = new_int(sn);
+    bellman_ford(sg, sn, sm, 0, bf);
+    dijkstra(sg, sn, sm, 0, dj);
+    int agree = 1;
+    for i in 0..sn {
+        if (bf[i] != dj[i]) {
+            agree = 0;
+        }
+    }
+    ok(agree);
+    h = mix(h, checksum(bf));
+
+    int fnodes = 120;
+    int fm = 900;
+    int[] fg = random_graph(fnodes, fm, 40, 0);
+    int[] fd = new_int(fnodes * fnodes);
+    floyd(fg, fnodes, fm, fd);
+    int[] row = new_int(fnodes);
+    int same_rows = 1;
+    for s in 0..4 {
+        int src = s * 17;
+        dijkstra(fg, fnodes, fm, src, row);
+        for j in 0..fnodes {
+            if (row[j] != fd[src * fnodes + j]) {
+                same_rows = 0;
+            }
+        }
+    }
+    ok(same_rows);
+    h = mix(h, checksum(fd));
+
+    int cn = 70;
+    int cm = 150;
+    int[] cg = random_graph(cn, cm, 9, 0);
+    int[] cd = new_int(cn * cn);
+    floyd(cg, cn, cm, cd);
+    int scc1 = tarjan_scc(cg, cn, cm);
+    int scc2 = scc_by_reachability(cd, cn);
+    ok(same(scc1, scc2));
+    int bm = n * 2;
+    int[] big = random_graph(n, bm, 9, 0);
+    int scc3 = tarjan_scc(big, n, bm);
+    h = mix(mix(h, scc1), scc3);
+
+    int dn = 10000;
+    int dm = 30000;
+    int[] dag = graph_new(dn, dm);
+    for i in 0..dm {
+        int u = rnd_int(dn);
+        int v = rnd_int(dn);
+        int w = 1 + rnd_int(20);
+        if (u < v) {
+            add_edge(dag, dn, dm, u, v, w);
+        } else if (v < u) {
+            add_edge(dag, dn, dm, v, u, w);
+        }
+    }
+    int[] order = new_int(dn);
+    int placed = topo_sort(dag, dn, dm, order);
+    ok(same(placed, dn));
+    int[] pos = new_int(dn);
+    for i in 0..dn {
+        pos[order[i]] = i;
+    }
+    int dcount = dag[dn + 4 * dm];
+    int topo_ok = 1;
+    for e in 0..dcount {
+        if (pos[dag[dn + 3 * dm + e]] > pos[dag[dn + dm + e]]) {
+            topo_ok = 0;
+        }
+    }
+    ok(topo_ok);
+    h = mix(h, dag_longest(dag, dn, dm, order, placed));
+
+    int fl_n = 200;
+    int fl_pairs = 1500;
+    int fl_cap = 2 * fl_pairs;
+    int[] net = graph_new(fl_n, fl_cap);
+    for i in 0..fl_pairs {
+        int u = rnd_int(fl_n);
+        int v = rnd_int(fl_n);
+        int c = 1 + rnd_int(30);
+        if (u != v) {
+            add_flow_edge(net, fl_n, fl_cap, u, v, c);
+        }
+    }
+    int[] net2 = new_int(len(net));
+    copy_into(net2, net);
+    int f1 = max_flow(net, fl_n, fl_cap, 0, fl_n - 1);
+    int f2 = edmonds_karp(net2, fl_n, fl_cap, 0, fl_n - 1);
+    ok(same(f1, f2));
+    h = mix(h, f1);
+
+    int tn = 30000;
+    int levels = 15;
+    int[] parent = new_int(tn);
+    int[] depth = new_int(tn);
+    int[] up = new_int(levels * tn);
+    for i in 1..tn {
+        int p = rnd_int(i);
+        parent[i] = p;
+        depth[i] = depth[p] + 1;
+        up[i] = p;
+    }
+    for k in 1..levels {
+        for i in 0..tn {
+            up[k * tn + i] = up[(k - 1) * tn + up[(k - 1) * tn + i]];
+        }
+    }
+    int lca_sum = 0;
+    for q in 0..12000 {
+        int a = rnd_int(tn);
+        int b = rnd_int(tn);
+        int x = lca_fast(up, depth, tn, levels, a, b);
+        if (q % 250 == 0) {
+            ok(same(x, lca_slow(parent, depth, a, b)));
+        }
+        lca_sum = mix(lca_sum, x);
+    }
+    h = mix(h, lca_sum);
+    return h;
+}

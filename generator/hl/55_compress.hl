@@ -1,0 +1,291 @@
+// ===== Compression =====
+fn int rle_encode(int[] s, int[] out) {
+    int n = len(s);
+    int k = 0;
+    int i = 0;
+    while (i < n) {
+        int j = i;
+        while (j < n && s[j] == s[i]) {
+            j = j + 1;
+        }
+        out[k] = s[i];
+        out[k + 1] = j - i;
+        k = k + 2;
+        i = j;
+    }
+    return k;
+}
+
+fn int rle_decode(int[] enc, int k, int[] out) {
+    int pos = 0;
+    int i = 0;
+    while (i < k) {
+        int v = enc[i];
+        int c = enc[i + 1];
+        for t in 0..c {
+            out[pos] = v;
+            pos = pos + 1;
+        }
+        i = i + 2;
+    }
+    return pos;
+}
+
+fn int lzw_encode(int[] s, int alpha, int[] out, int[] hk, int[] hv, int mask) {
+    int next_code = alpha;
+    int w = s[0];
+    int k = 0;
+    for i in 1..len(s) {
+        int c = s[i];
+        int key = w * alpha + c;
+        int slot = ht_find(hk, mask, key);
+        if (hk[slot] != 0) {
+            w = hv[slot];
+        } else {
+            out[k] = w;
+            k = k + 1;
+            hk[slot] = key + 1;
+            hv[slot] = next_code;
+            next_code = next_code + 1;
+            w = c;
+        }
+    }
+    out[k] = w;
+    k = k + 1;
+    return k;
+}
+
+fn int lzw_decode(int[] codes, int n, int alpha, int[] out, int[] prefix, int[] suffix, int[] stack) {
+    int next_code = alpha;
+    int pos = 1;
+    int prev = codes[0];
+    int first_char = prev;
+    out[0] = prev;
+    for i in 1..n {
+        int code = codes[i];
+        int cur = code;
+        int sp = 0;
+        if (code >= next_code) {
+            stack[sp] = first_char;
+            sp = sp + 1;
+            cur = prev;
+        }
+        while (cur >= alpha) {
+            stack[sp] = suffix[cur];
+            sp = sp + 1;
+            cur = prefix[cur];
+        }
+        stack[sp] = cur;
+        sp = sp + 1;
+        first_char = cur;
+        int j = sp - 1;
+        while (j >= 0) {
+            out[pos] = stack[j];
+            pos = pos + 1;
+            j = j - 1;
+        }
+        prefix[next_code] = prev;
+        suffix[next_code] = first_char;
+        next_code = next_code + 1;
+        prev = code;
+    }
+    return pos;
+}
+
+fn int huffman_bits(int[] freq, int alpha) {
+    int total_nodes = 2 * alpha;
+    int[] parent = new_int(total_nodes);
+    int[] keys = new_int(total_nodes + 2);
+    int[] vals = new_int(total_nodes + 2);
+    int[] out = new_int(2);
+    int size = 0;
+    for i in 0..alpha {
+        size = heap_push(keys, vals, size, freq[i], i);
+    }
+    int fresh = alpha;
+    while (size > 1) {
+        size = heap_pop(keys, vals, size, out);
+        int w1 = out[0];
+        int n1 = out[1];
+        size = heap_pop(keys, vals, size, out);
+        int w2 = out[0];
+        int n2 = out[1];
+        parent[n1] = fresh;
+        parent[n2] = fresh;
+        size = heap_push(keys, vals, size, w1 + w2, fresh);
+        fresh = fresh + 1;
+    }
+    int root = fresh - 1;
+    int bits = 0;
+    for i in 0..alpha {
+        int depth = 0;
+        int cur = i;
+        while (cur != root) {
+            cur = parent[cur];
+            depth = depth + 1;
+        }
+        bits = bits + depth * freq[i];
+    }
+    return bits;
+}
+
+fn void bwt_forward(int[] t, int[] bwt) {
+    int m = len(t);
+    int[] sa = new_int(m);
+    suffix_array(t, sa);
+    for i in 0..m {
+        if (sa[i] == 0) {
+            bwt[i] = t[m - 1];
+        } else {
+            bwt[i] = t[sa[i] - 1];
+        }
+    }
+}
+
+fn void bwt_inverse(int[] bwt, int alpha, int[] out) {
+    int m = len(bwt);
+    int[] counts = new_int(alpha + 1);
+    for i in 0..m {
+        counts[bwt[i] + 1] = counts[bwt[i] + 1] + 1;
+    }
+    for c in 1..alpha + 1 {
+        counts[c] = counts[c] + counts[c - 1];
+    }
+    int[] occ = new_int(alpha);
+    int[] lf = new_int(m);
+    for i in 0..m {
+        int c = bwt[i];
+        lf[i] = counts[c] + occ[c];
+        occ[c] = occ[c] + 1;
+    }
+    int row = 0;
+    int pos = m - 2;
+    while (pos >= 0) {
+        out[pos] = bwt[row];
+        row = lf[row];
+        pos = pos - 1;
+    }
+}
+
+fn void mtf_encode(int[] s, int alpha, int[] out) {
+    int[] table = new_int(alpha);
+    for i in 0..alpha {
+        table[i] = i;
+    }
+    for i in 0..len(s) {
+        int c = s[i];
+        int j = 0;
+        while (table[j] != c) {
+            j = j + 1;
+        }
+        out[i] = j;
+        while (j > 0) {
+            table[j] = table[j - 1];
+            j = j - 1;
+        }
+        table[0] = c;
+    }
+}
+
+fn void mtf_decode(int[] enc, int alpha, int[] out) {
+    int[] table = new_int(alpha);
+    for i in 0..alpha {
+        table[i] = i;
+    }
+    for i in 0..len(enc) {
+        int j = enc[i];
+        int c = table[j];
+        out[i] = c;
+        while (j > 0) {
+            table[j] = table[j - 1];
+            j = j - 1;
+        }
+        table[0] = c;
+    }
+}
+
+fn int arrays_equal(int[] a, int[] b, int n) {
+    for i in 0..n {
+        if (a[i] != b[i]) {
+            return 0;
+        }
+    }
+    return 1;
+}
+
+fn int group_compress() {
+    reset_seed(67);
+    int h = 0;
+    int alpha = 8;
+    int n = 220000;
+    int[] s = new_int(n);
+    for i in 0..n {
+        int r1 = rnd_int(alpha);
+        int r2 = rnd_int(alpha);
+        s[i] = min_int(r1, r2);
+    }
+
+    int[] enc = new_int(2 * n);
+    int k = rle_encode(s, enc);
+    int[] back = new_int(n);
+    int got = rle_decode(enc, k, back);
+    ok(same(got, n));
+    ok(arrays_equal(s, back, n));
+    h = mix(h, k);
+
+    int[] runs = new_int(n);
+    int pos = 0;
+    while (pos < n) {
+        int sym = rnd_int(alpha);
+        int run = 1 + rnd_int(9);
+        for t in 0..run {
+            if (pos < n) {
+                runs[pos] = sym;
+                pos = pos + 1;
+            }
+        }
+    }
+    int k2 = rle_encode(runs, enc);
+    ok(at_most(k2, n));
+    h = mix(h, k2);
+
+    int[] hk = new_int(1048576);
+    int[] hv = new_int(1048576);
+    int[] codes = new_int(n);
+    int nc = lzw_encode(s, alpha, codes, hk, hv, 1048575);
+    int[] prefix = new_int(n + alpha + 2);
+    int[] suffix = new_int(n + alpha + 2);
+    int[] stack = new_int(n + 2);
+    int[] lzw_out = new_int(n + 2);
+    int dn = lzw_decode(codes, nc, alpha, lzw_out, prefix, suffix, stack);
+    ok(same(dn, n));
+    ok(arrays_equal(s, lzw_out, n));
+    h = mix(mix(h, nc), checksum(codes));
+
+    int[] freq = new_int(alpha);
+    for i in 0..n {
+        freq[s[i]] = freq[s[i]] + 1;
+    }
+    int bits = huffman_bits(freq, alpha);
+    ok(at_most(bits, 3 * n));
+    h = mix(h, bits);
+
+    int bn = 8000;
+    int[] t = new_int(bn + 1);
+    for i in 0..bn {
+        t[i] = 1 + s[i] % 4;
+    }
+    int[] bwt = new_int(bn + 1);
+    bwt_forward(t, bwt);
+    int[] inv = new_int(bn + 1);
+    bwt_inverse(bwt, 5, inv);
+    ok(arrays_equal(t, inv, bn));
+    int[] mtf = new_int(bn + 1);
+    mtf_encode(bwt, 5, mtf);
+    int[] unmtf = new_int(bn + 1);
+    mtf_decode(mtf, 5, unmtf);
+    int bm = bn + 1;
+    ok(arrays_equal(bwt, unmtf, bm));
+    h = mix(mix(h, checksum(bwt)), checksum(mtf));
+    return h;
+}

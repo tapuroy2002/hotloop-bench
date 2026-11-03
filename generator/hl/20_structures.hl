@@ -1,0 +1,596 @@
+// ===== Data structures =====
+
+// Binary min-heap on 1-based key and value arrays.
+fn int heap_push(int[] keys, int[] vals, int size, int key, int val) {
+    int i = size + 1;
+    int going = 1;
+    while (i > 1 && going == 1) {
+        int p = i / 2;
+        if (keys[p] <= key) {
+            going = 0;
+        } else {
+            keys[i] = keys[p];
+            vals[i] = vals[p];
+            i = p;
+        }
+    }
+    keys[i] = key;
+    vals[i] = val;
+    return size + 1;
+}
+
+fn int heap_pop(int[] keys, int[] vals, int size, int[] out) {
+    out[0] = keys[1];
+    out[1] = vals[1];
+    int key = keys[size];
+    int val = vals[size];
+    int n = size - 1;
+    int i = 1;
+    int going = 1;
+    while (going == 1) {
+        int c = 2 * i;
+        if (c > n) {
+            going = 0;
+        } else {
+            if (c < n && keys[c + 1] < keys[c]) {
+                c = c + 1;
+            }
+            if (keys[c] >= key) {
+                going = 0;
+            } else {
+                keys[i] = keys[c];
+                vals[i] = vals[c];
+                i = c;
+            }
+        }
+    }
+    keys[i] = key;
+    vals[i] = val;
+    return n;
+}
+
+// Fenwick tree (binary indexed tree), prefix sums.
+fn void fen_add(int[] t, int pos, int delta) {
+    int n = len(t) - 1;
+    int k = pos + 1;
+    while (k <= n) {
+        t[k] = t[k] + delta;
+        k = k + (k - (k & (k - 1)));
+    }
+}
+
+fn int fen_sum(int[] t, int pos) {
+    int k = pos + 1;
+    int s = 0;
+    while (k > 0) {
+        s = s + t[k];
+        k = k & (k - 1);
+    }
+    return s;
+}
+
+// Iterative segment tree for range sums.
+fn void seg_update(int[] t, int n, int pos, int v) {
+    int i = pos + n;
+    t[i] = v;
+    i = i / 2;
+    while (i > 0) {
+        t[i] = t[2 * i] + t[2 * i + 1];
+        i = i / 2;
+    }
+}
+
+fn int seg_query(int[] t, int n, int l, int r) {
+    int lo = l + n;
+    int hi = r + n + 1;
+    int s = 0;
+    while (lo < hi) {
+        if (lo % 2 == 1) {
+            s = s + t[lo];
+            lo = lo + 1;
+        }
+        if (hi % 2 == 1) {
+            hi = hi - 1;
+            s = s + t[hi];
+        }
+        lo = lo / 2;
+        hi = hi / 2;
+    }
+    return s;
+}
+
+// Sparse table for range minimum queries.
+fn int log2_floor(int x) {
+    int r = 0;
+    int v = x;
+    while (v > 1) {
+        v = v / 2;
+        r = r + 1;
+    }
+    return r;
+}
+
+fn void sparse_build(int[] sp, int[] a, int n, int levels) {
+    for i in 0..n {
+        sp[i] = a[i];
+    }
+    int half = 1;
+    for k in 1..levels {
+        int span = half * 2;
+        for i in 0..n - span + 1 {
+            sp[k * n + i] = min_int(sp[(k - 1) * n + i], sp[(k - 1) * n + i + half]);
+        }
+        half = span;
+    }
+}
+
+fn int sparse_query(int[] sp, int n, int l, int r) {
+    int k = log2_floor(r - l + 1);
+    int span = 1 << k;
+    return min_int(sp[k * n + l], sp[k * n + r - span + 1]);
+}
+
+fn int brute_min(int[] a, int l, int r) {
+    int m = a[l];
+    for i in l..r + 1 {
+        m = min_int(m, a[i]);
+    }
+    return m;
+}
+
+// Binary search tree stored in one array: keys, left links, right links, then the node count.
+fn int bst_insert(int[] t, int c, int key) {
+    int cnt = t[3 * c];
+    if (cnt == 0) {
+        t[0] = key;
+        t[c] = -1;
+        t[2 * c] = -1;
+        t[3 * c] = 1;
+        return 1;
+    }
+    int node = 0;
+    int going = 1;
+    int inserted = 0;
+    while (going == 1) {
+        int nk = t[node];
+        if (key == nk) {
+            going = 0;
+        } else {
+            int slot = c + node;
+            if (key > nk) {
+                slot = 2 * c + node;
+            }
+            int nxt = t[slot];
+            if (nxt == -1) {
+                t[slot] = cnt;
+                t[cnt] = key;
+                t[c + cnt] = -1;
+                t[2 * c + cnt] = -1;
+                t[3 * c] = cnt + 1;
+                inserted = 1;
+                going = 0;
+            } else {
+                node = nxt;
+            }
+        }
+    }
+    return inserted;
+}
+
+fn int bst_has(int[] t, int c, int key) {
+    if (t[3 * c] == 0) {
+        return 0;
+    }
+    int node = 0;
+    while (node != -1) {
+        int nk = t[node];
+        if (key == nk) {
+            return 1;
+        }
+        if (key < nk) {
+            node = t[c + node];
+        } else {
+            node = t[2 * c + node];
+        }
+    }
+    return 0;
+}
+
+fn int bst_height(int[] t, int c) {
+    int cnt = t[3 * c];
+    if (cnt == 0) {
+        return 0;
+    }
+    int[] st = new_int(2 * cnt + 4);
+    st[0] = 0;
+    st[1] = 1;
+    int sp = 2;
+    int best = 0;
+    while (sp > 0) {
+        sp = sp - 2;
+        int node = st[sp];
+        int depth = st[sp + 1];
+        if (depth > best) {
+            best = depth;
+        }
+        int lc = t[c + node];
+        if (lc != -1) {
+            st[sp] = lc;
+            st[sp + 1] = depth + 1;
+            sp = sp + 2;
+        }
+        int rc = t[2 * c + node];
+        if (rc != -1) {
+            st[sp] = rc;
+            st[sp + 1] = depth + 1;
+            sp = sp + 2;
+        }
+    }
+    return best;
+}
+
+fn int bst_inorder(int[] t, int c, int[] out) {
+    int cnt = t[3 * c];
+    if (cnt == 0) {
+        return 0;
+    }
+    int[] st = new_int(cnt + 2);
+    int sp = 0;
+    int node = 0;
+    int k = 0;
+    while (node != -1 || sp > 0) {
+        while (node != -1) {
+            st[sp] = node;
+            sp = sp + 1;
+            node = t[c + node];
+        }
+        sp = sp - 1;
+        node = st[sp];
+        out[k] = t[node];
+        k = k + 1;
+        node = t[2 * c + node];
+    }
+    return k;
+}
+
+// Open addressing hash table. Keys are stored plus one so zero means empty.
+fn int ht_find(int[] keys, int mask, int key) {
+    int i = ((key * 2654435) / 16) & mask;
+    while (keys[i] != 0 && keys[i] != key + 1) {
+        i = (i + 1) & mask;
+    }
+    return i;
+}
+
+fn void ht_set(int[] keys, int[] vals, int mask, int key, int val) {
+    int i = ht_find(keys, mask, key);
+    keys[i] = key + 1;
+    vals[i] = val;
+}
+
+fn int ht_get(int[] keys, int[] vals, int mask, int key) {
+    int i = ht_find(keys, mask, key);
+    if (keys[i] == 0) {
+        return -1;
+    }
+    return vals[i];
+}
+
+// LRU cache: hash chains plus a doubly linked recency list, all inside one array.
+// Layout: 8 meta cells, nb buckets, then key, value, prev, next and chain arrays of length cap.
+fn int lru_bucket(int key, int nb) {
+    return ((key * 2654435) / 16) % nb;
+}
+
+fn int lru_find(int[] t, int cap, int nb, int key) {
+    int off = 8 + nb;
+    int cur = t[8 + lru_bucket(key, nb)];
+    while (cur != 0) {
+        if (t[off + cur - 1] == key) {
+            return cur;
+        }
+        cur = t[off + 4 * cap + cur - 1];
+    }
+    return 0;
+}
+
+fn void lru_unlink(int[] t, int cap, int nb, int node) {
+    int off = 8 + nb;
+    int p = t[off + 2 * cap + node - 1];
+    int q = t[off + 3 * cap + node - 1];
+    if (p != 0) {
+        t[off + 3 * cap + p - 1] = q;
+    } else {
+        t[0] = q;
+    }
+    if (q != 0) {
+        t[off + 2 * cap + q - 1] = p;
+    } else {
+        t[1] = p;
+    }
+}
+
+fn void lru_push_front(int[] t, int cap, int nb, int node) {
+    int off = 8 + nb;
+    int head = t[0];
+    t[off + 2 * cap + node - 1] = 0;
+    t[off + 3 * cap + node - 1] = head;
+    if (head != 0) {
+        t[off + 2 * cap + head - 1] = node;
+    } else {
+        t[1] = node;
+    }
+    t[0] = node;
+}
+
+fn void lru_unchain(int[] t, int cap, int nb, int node) {
+    int off = 8 + nb;
+    int key = t[off + node - 1];
+    int slot = 8 + lru_bucket(key, nb);
+    int cur = t[slot];
+    int prev = 0;
+    while (cur != node) {
+        prev = cur;
+        cur = t[off + 4 * cap + cur - 1];
+    }
+    int nxt = t[off + 4 * cap + cur - 1];
+    if (prev == 0) {
+        t[slot] = nxt;
+    } else {
+        t[off + 4 * cap + prev - 1] = nxt;
+    }
+}
+
+fn int lru_get(int[] t, int cap, int nb, int key) {
+    int node = lru_find(t, cap, nb, key);
+    if (node == 0) {
+        t[4] = t[4] + 1;
+        return -1;
+    }
+    t[3] = t[3] + 1;
+    lru_unlink(t, cap, nb, node);
+    lru_push_front(t, cap, nb, node);
+    return t[8 + nb + cap + node - 1];
+}
+
+fn void lru_put(int[] t, int cap, int nb, int key, int val) {
+    int off = 8 + nb;
+    int node = lru_find(t, cap, nb, key);
+    if (node != 0) {
+        t[off + cap + node - 1] = val;
+        lru_unlink(t, cap, nb, node);
+        lru_push_front(t, cap, nb, node);
+        return;
+    }
+    if (t[2] == cap) {
+        node = t[1];
+        lru_unlink(t, cap, nb, node);
+        lru_unchain(t, cap, nb, node);
+    } else {
+        t[2] = t[2] + 1;
+        node = t[2];
+    }
+    t[off + node - 1] = key;
+    t[off + cap + node - 1] = val;
+    int slot = 8 + lru_bucket(key, nb);
+    t[off + 4 * cap + node - 1] = t[slot];
+    t[slot] = node;
+    lru_push_front(t, cap, nb, node);
+}
+
+// Union-find with path compression and union by rank. Parents first, ranks after.
+fn int[] uf_new(int n) {
+    int[] uf = new_int(2 * n);
+    for i in 0..n {
+        uf[i] = i;
+    }
+    return uf;
+}
+
+fn int uf_find(int[] uf, int x) {
+    int r = x;
+    while (uf[r] != r) {
+        r = uf[r];
+    }
+    int cur = x;
+    while (uf[cur] != r) {
+        int nxt = uf[cur];
+        uf[cur] = r;
+        cur = nxt;
+    }
+    return r;
+}
+
+fn int uf_union(int[] uf, int n, int a, int b) {
+    int ra = uf_find(uf, a);
+    int rb = uf_find(uf, b);
+    if (ra == rb) {
+        return 0;
+    }
+    if (uf[n + ra] < uf[n + rb]) {
+        uf[ra] = rb;
+    } else if (uf[n + ra] > uf[n + rb]) {
+        uf[rb] = ra;
+    } else {
+        uf[rb] = ra;
+        uf[n + ra] = uf[n + ra] + 1;
+    }
+    return 1;
+}
+
+// Monotonic deque and monotonic stack problems.
+fn int sliding_window_max(int[] a, int k) {
+    int n = len(a);
+    int[] dq = new_int(n + 1);
+    int head = 0;
+    int tail = 0;
+    int acc = 0;
+    for i in 0..n {
+        while (tail > head && a[dq[tail - 1]] <= a[i]) {
+            tail = tail - 1;
+        }
+        dq[tail] = i;
+        tail = tail + 1;
+        if (dq[head] <= i - k) {
+            head = head + 1;
+        }
+        if (i >= k - 1) {
+            acc = mix(acc, a[dq[head]]);
+        }
+    }
+    return acc;
+}
+
+fn int largest_rectangle(int[] hs) {
+    int n = len(hs);
+    int[] st = new_int(n + 2);
+    int sp = 0;
+    int best = 0;
+    for i in 0..n + 1 {
+        int cur = 0;
+        if (i < n) {
+            cur = hs[i];
+        }
+        while (sp > 0 && hs[st[sp - 1]] >= cur) {
+            int height = hs[st[sp - 1]];
+            sp = sp - 1;
+            int left = 0;
+            if (sp > 0) {
+                left = st[sp - 1] + 1;
+            }
+            best = max_int(best, height * (i - left));
+        }
+        st[sp] = i;
+        sp = sp + 1;
+    }
+    return best;
+}
+
+fn int group_structures() {
+    reset_seed(23);
+    int h = 0;
+    int n = 50000;
+
+    int[] keys = new_int(n + 2);
+    int[] vals = new_int(n + 2);
+    int[] out = new_int(2);
+    int size = 0;
+    for i in 0..n {
+        int k = rnd_int(1000000);
+        size = heap_push(keys, vals, size, k, i);
+    }
+    int last = 0;
+    int ordered = 1;
+    while (size > 0) {
+        size = heap_pop(keys, vals, size, out);
+        if (out[0] < last) {
+            ordered = 0;
+        }
+        last = out[0];
+        h = mix(h, out[0] + out[1]);
+    }
+    ok(ordered);
+
+    int[] fen = new_int(n + 1);
+    int[] seg = new_int(2 * n);
+    int[] plain = new_int(n);
+    for i in 0..n {
+        int idx = rnd_int(n);
+        int delta = rnd_int(100);
+        fen_add(fen, idx, delta);
+        plain[idx] = plain[idx] + delta;
+        seg_update(seg, n, idx, plain[idx]);
+    }
+    int running = 0;
+    for i in 0..n {
+        running = running + plain[i];
+        if (i % 499 == 0) {
+            ok(same(fen_sum(fen, i), running));
+            ok(same(seg_query(seg, n, 0, i), running));
+        }
+    }
+    for q in 0..n {
+        int l = rnd_int(n);
+        int span = rnd_int(500);
+        int r = min_int(n - 1, l + span);
+        h = mix(h, fen_sum(fen, r) - fen_sum(fen, l) + plain[l] + seg_query(seg, n, l, r));
+    }
+
+    int[] bst = new_int(3 * n + 1);
+    int inserted = 0;
+    for i in 0..n {
+        int key = rnd_int(n * 4);
+        inserted = inserted + bst_insert(bst, n, key);
+    }
+    int[] sortedkeys = new_int(inserted);
+    int cnt = bst_inorder(bst, n, sortedkeys);
+    ok(same(cnt, inserted));
+    ok(is_sorted(sortedkeys));
+    int found = 0;
+    for i in 0..n {
+        found = found + bst_has(bst, n, i);
+    }
+    h = mix(mix(h, found), bst_height(bst, n));
+
+    int lcap = 256;
+    int nb = 512;
+    int[] lru = new_int(8 + nb + 5 * lcap);
+    for i in 0..n * 2 {
+        int r1 = rnd_int(10);
+        int key = i;
+        if (r1 < 7) {
+            int r2 = rnd_int(2000);
+            int r3 = rnd_int(2000);
+            key = (r2 * r3) / 2000;
+        }
+        if (lru_get(lru, lcap, nb, key) == -1) {
+            lru_put(lru, lcap, nb, key, i);
+        }
+    }
+    h = mix(mix(h, lru[3]), lru[4]);
+
+    int[] hk = new_int(32768);
+    int[] hv = new_int(32768);
+    for i in 0..16000 {
+        int key = rnd_int(1000000);
+        ht_set(hk, hv, 32767, key, i);
+    }
+    int seen = 0;
+    for i in 0..n {
+        int probe = i * 37;
+        if (ht_get(hk, hv, 32767, probe) != -1) {
+            seen = seen + 1;
+        }
+    }
+    h = mix(h, seen);
+
+    int un = 80000;
+    int[] uf = uf_new(un);
+    int comps = un;
+    for i in 0..un {
+        int a1 = rnd_int(un);
+        int b1 = rnd_int(un);
+        comps = comps - uf_union(uf, un, a1, b1);
+    }
+    h = mix(h, comps);
+
+    int rn = 16384;
+    int levels = 15;
+    int[] arr = random_array(rn, 1000000);
+    int[] sp = new_int(levels * rn);
+    sparse_build(sp, arr, rn, levels);
+    for q in 0..rn {
+        int l = rnd_int(rn);
+        int span = rnd_int(300);
+        int r = min_int(rn - 1, l + span);
+        int m1 = sparse_query(sp, rn, l, r);
+        if (q % 512 == 0) {
+            ok(same(brute_min(arr, l, r), m1));
+        }
+        h = mix(h, m1);
+    }
+    h = mix(h, sliding_window_max(arr, 64));
+    int[] heights = random_array(rn, 5000);
+    h = mix(h, largest_rectangle(heights));
+    return h;
+}

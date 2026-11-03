@@ -1,0 +1,468 @@
+// ===== Number theory, linear algebra and bignum =====
+const int NTTP = 7340033;
+
+fn int sieve_primes(int limit, int[] primes) {
+    int[] comp = new_int(limit + 1);
+    int count = 0;
+    for i in 2..limit + 1 {
+        if (comp[i] == 0) {
+            primes[count] = i;
+            count = count + 1;
+        }
+        int j = 0;
+        while (j < count && i * primes[j] <= limit) {
+            comp[i * primes[j]] = 1;
+            if (i % primes[j] == 0) {
+                j = count;
+            } else {
+                j = j + 1;
+            }
+        }
+    }
+    return count;
+}
+
+fn int prime_factor_count(int[] primes, int pc, int value) {
+    int n = value;
+    int total = 0;
+    int i = 0;
+    while (i < pc && primes[i] * primes[i] <= n) {
+        while (n % primes[i] == 0) {
+            n = n / primes[i];
+            total = total + 1;
+        }
+        i = i + 1;
+    }
+    if (n > 1) {
+        total = total + 1;
+    }
+    return total;
+}
+
+fn int totient_of(int[] primes, int pc, int value) {
+    int n = value;
+    int result = value;
+    int i = 0;
+    while (i < pc && primes[i] * primes[i] <= n) {
+        if (n % primes[i] == 0) {
+            while (n % primes[i] == 0) {
+                n = n / primes[i];
+            }
+            result = result - result / primes[i];
+        }
+        i = i + 1;
+    }
+    if (n > 1) {
+        result = result - result / n;
+    }
+    return result;
+}
+
+fn void totient_sieve(int[] phi) {
+    int n = len(phi);
+    for i in 0..n {
+        phi[i] = i;
+    }
+    for i in 2..n {
+        if (phi[i] == i) {
+            for j in i..n step i {
+                phi[j] = phi[j] - phi[j] / i;
+            }
+        }
+    }
+}
+
+fn int mod_inverse(int a, int m) {
+    int r0 = m;
+    int r1 = a % m;
+    int t0 = 0;
+    int t1 = 1;
+    while (r1 != 0) {
+        int q = r0 / r1;
+        int r2 = r0 - q * r1;
+        int t2 = t0 - q * t1;
+        r0 = r1;
+        r1 = r2;
+        t0 = t1;
+        t1 = t2;
+    }
+    int res = t0 % m;
+    if (res < 0) {
+        res = res + m;
+    }
+    return res;
+}
+
+fn void matmul_mod(int[] a, int[] b, int[] c, int n) {
+    for i in 0..n {
+        for j in 0..n {
+            int s = 0;
+            for k in 0..n {
+                s = (s + a[i * n + k] * b[k * n + j]) % MODP;
+            }
+            c[i * n + j] = s;
+        }
+    }
+}
+
+fn void mat2_mul(int[] a, int[] b, int[] out) {
+    int o0 = (a[0] * b[0] + a[1] * b[2]) % MODP;
+    int o1 = (a[0] * b[1] + a[1] * b[3]) % MODP;
+    int o2 = (a[2] * b[0] + a[3] * b[2]) % MODP;
+    int o3 = (a[2] * b[1] + a[3] * b[3]) % MODP;
+    out[0] = o0;
+    out[1] = o1;
+    out[2] = o2;
+    out[3] = o3;
+}
+
+fn int fib_mod(int n) {
+    int[] result = new_int(4);
+    int[] base = new_int(4);
+    int[] base2 = new_int(4);
+    int[] scratch = new_int(4);
+    result[0] = 1;
+    result[3] = 1;
+    base[0] = 1;
+    base[1] = 1;
+    base[2] = 1;
+    int k = n;
+    while (k > 0) {
+        if (k % 2 == 1) {
+            mat2_mul(result, base, scratch);
+            copy_into(result, scratch);
+        }
+        copy_into(base2, base);
+        mat2_mul(base, base2, scratch);
+        copy_into(base, scratch);
+        k = k / 2;
+    }
+    return result[1];
+}
+
+fn int fib_slow(int n) {
+    int a = 0;
+    int b = 1;
+    for i in 0..n {
+        int t = (a + b) % MODP;
+        a = b;
+        b = t;
+    }
+    return a;
+}
+
+fn void ntt(int[] a, int invert) {
+    int n = len(a);
+    int j = 0;
+    for i in 1..n {
+        int bit = n / 2;
+        while ((j & bit) != 0) {
+            j = j ^ bit;
+            bit = bit / 2;
+        }
+        j = j ^ bit;
+        if (i < j) {
+            swap(a, i, j);
+        }
+    }
+    int span = 2;
+    while (span <= n) {
+        int w = powmod(3, (NTTP - 1) / span, NTTP);
+        if (invert == 1) {
+            w = powmod(w, NTTP - 2, NTTP);
+        }
+        int half = span / 2;
+        int start = 0;
+        while (start < n) {
+            int wn = 1;
+            for k in 0..half {
+                int u = a[start + k];
+                int v = (a[start + k + half] * wn) % NTTP;
+                a[start + k] = (u + v) % NTTP;
+                a[start + k + half] = (u - v + NTTP) % NTTP;
+                wn = (wn * w) % NTTP;
+            }
+            start = start + span;
+        }
+        span = span * 2;
+    }
+    if (invert == 1) {
+        int n_inv = powmod(n, NTTP - 2, NTTP);
+        for i in 0..n {
+            a[i] = (a[i] * n_inv) % NTTP;
+        }
+    }
+}
+
+fn void poly_multiply(int[] x, int[] y, int[] out, int size) {
+    int[] fa = new_int(size);
+    int[] fb = new_int(size);
+    for i in 0..len(x) {
+        fa[i] = x[i];
+    }
+    for i in 0..len(y) {
+        fb[i] = y[i];
+    }
+    ntt(fa, 0);
+    ntt(fb, 0);
+    for i in 0..size {
+        fa[i] = (fa[i] * fb[i]) % NTTP;
+    }
+    ntt(fa, 1);
+    for i in 0..size {
+        out[i] = fa[i];
+    }
+}
+
+fn int gauss_mod(int[] a, int[] b, int n) {
+    int det = 1;
+    for col in 0..n {
+        int piv = col;
+        while (piv < n && a[piv * n + col] == 0) {
+            piv = piv + 1;
+        }
+        if (piv == n) {
+            return 0;
+        }
+        if (piv != col) {
+            for c in 0..n {
+                int t = a[col * n + c];
+                a[col * n + c] = a[piv * n + c];
+                a[piv * n + c] = t;
+            }
+            int tb = b[col];
+            b[col] = b[piv];
+            b[piv] = tb;
+            det = (MODP - det) % MODP;
+        }
+        det = (det * a[col * n + col]) % MODP;
+        int inv = powmod(a[col * n + col], MODP - 2, MODP);
+        for r in col + 1..n {
+            int f = (a[r * n + col] * inv) % MODP;
+            if (f != 0) {
+                for c in col..n {
+                    a[r * n + c] = (a[r * n + c] + MODP - (f * a[col * n + c]) % MODP) % MODP;
+                }
+                b[r] = (b[r] + MODP - (f * b[col]) % MODP) % MODP;
+            }
+        }
+    }
+    int row = n - 1;
+    while (row >= 0) {
+        int s = b[row];
+        for c in row + 1..n {
+            s = (s + MODP - (a[row * n + c] * b[c]) % MODP) % MODP;
+        }
+        int piv_inv = powmod(a[row * n + row], MODP - 2, MODP);
+        b[row] = (s * piv_inv) % MODP;
+        row = row - 1;
+    }
+    return det;
+}
+
+fn int factorial_digit_sum(int n) {
+    int base = 10000000;
+    int[] limbs = new_int(n + 50);
+    limbs[0] = 1;
+    int size = 1;
+    for m in 2..n + 1 {
+        int carry = 0;
+        for i in 0..size {
+            int v = limbs[i] * m + carry;
+            limbs[i] = v % base;
+            carry = v / base;
+        }
+        while (carry > 0) {
+            limbs[size] = carry % base;
+            carry = carry / base;
+            size = size + 1;
+        }
+    }
+    int sum = 0;
+    for i in 0..size {
+        int d = limbs[i];
+        while (d > 0) {
+            sum = sum + d % 10;
+            d = d / 10;
+        }
+    }
+    return sum;
+}
+
+fn int collatz_longest(int limit) {
+    int[] memo = new_int(limit + 1);
+    memo[1] = 1;
+    int best_start = 1;
+    for start in 2..limit + 1 {
+        int n = start;
+        int steps = 0;
+        while (n >= start) {
+            if (n % 2 == 0) {
+                n = n / 2;
+            } else {
+                n = 3 * n + 1;
+            }
+            steps = steps + 1;
+        }
+        memo[start] = steps + memo[n];
+        if (memo[start] > memo[best_start]) {
+            best_start = start;
+        }
+    }
+    return best_start;
+}
+
+fn void fmatmul(float[] a, float[] b, float[] c, int n) {
+    for i in 0..n {
+        for k in 0..n {
+            float aik = a[i * n + k];
+            for j in 0..n {
+                c[i * n + j] = c[i * n + j] + aik * b[k * n + j];
+            }
+        }
+    }
+}
+
+fn void stencil_step(float[] u, float[] v, int n) {
+    for y in 1..n - 1 {
+        for x in 1..n - 1 {
+            v[y * n + x] = (u[y * n + x - 1] + u[y * n + x + 1] + u[(y - 1) * n + x] + u[(y + 1) * n + x]) * 0.25;
+        }
+    }
+    for i in 0..n * n {
+        u[i] = v[i];
+    }
+}
+
+fn int group_numeric() {
+    reset_seed(61);
+    int h = 0;
+    int limit = 1000000;
+    int[] primes = new_int(limit / 8 + 100);
+    int pc = sieve_primes(limit, primes);
+    ok(same(pc, 78498));
+    h = mix(h, pc);
+    int fsum = 0;
+    for i in 0..12000 {
+        fsum = fsum + prime_factor_count(primes, pc, 900000 + i * 7);
+    }
+    h = mix(h, fsum);
+
+    int[] phi = new_int(400000);
+    totient_sieve(phi);
+    int phi_sum = 0;
+    for i in 1..400000 {
+        phi_sum = (phi_sum + phi[i]) % 1000000007;
+    }
+    for i in 0..40 {
+        int v = 1000 + i * 977;
+        ok(same(phi[v], totient_of(primes, pc, v)));
+    }
+    h = mix(h, phi_sum);
+
+    for i in 1..200 {
+        int a = 3 + i * 31;
+        int inv = mod_inverse(a, MODP);
+        ok(same((a * inv) % MODP, 1));
+    }
+    ok(same(powmod(3, MODP - 1, MODP), 1));
+    h = mix(h, powmod(7, 123456789, MODP));
+
+    int mn = 100;
+    int[] ma = random_array(mn * mn, MODP);
+    int[] mb = random_array(mn * mn, MODP);
+    int[] mc = new_int(mn * mn);
+    matmul_mod(ma, mb, mc, mn);
+    h = mix(h, checksum(mc));
+
+    ok(same(fib_mod(30), 832040));
+    ok(same(fib_mod(5000), fib_slow(5000)));
+    h = mix(h, fib_mod(900000000000));
+
+    int psize = 32768;
+    int[] px = random_array(8000, 10);
+    int[] py = random_array(8000, 10);
+    int[] pz = new_int(psize);
+    poly_multiply(px, py, pz, psize);
+    int[] naive = new_int(psize);
+    for i in 0..60 {
+        for j in 0..8000 {
+            int idx = i + j;
+            naive[idx] = (naive[idx] + px[i] * py[j]) % NTTP;
+        }
+    }
+    int partial_ok = 1;
+    for i in 0..59 {
+        int coef = 0;
+        for j in 0..i + 1 {
+            coef = (coef + px[j] * py[i - j]) % NTTP;
+        }
+        if (coef != pz[i]) {
+            partial_ok = 0;
+        }
+    }
+    ok(partial_ok);
+    h = mix(h, checksum(pz));
+
+    int gn = 90;
+    int[] ga = random_array(gn * gn, MODP);
+    int[] gb = random_array(gn, MODP);
+    int[] ga0 = new_int(gn * gn);
+    int[] gb0 = new_int(gn);
+    copy_into(ga0, ga);
+    copy_into(gb0, gb);
+    int det = gauss_mod(ga, gb, gn);
+    if (det != 0) {
+        int residual_ok = 1;
+        for r in 0..gn {
+            int s = 0;
+            for c in 0..gn {
+                s = (s + ga0[r * gn + c] * gb[c]) % MODP;
+            }
+            if (s != gb0[r]) {
+                residual_ok = 0;
+            }
+        }
+        ok(residual_ok);
+    }
+    h = mix(mix(h, det), checksum(gb));
+
+    ok(same(factorial_digit_sum(100), 648));
+    h = mix(h, factorial_digit_sum(1500));
+    int longest = collatz_longest(100000);
+    ok(same(longest, 77031));
+    h = mix(h, longest);
+    h = mix(h, collatz_longest(500000));
+
+    int fnn = 140;
+    float[] fa = new_float(fnn * fnn);
+    float[] fb = new_float(fnn * fnn);
+    float[] fc = new_float(fnn * fnn);
+    for i in 0..fnn * fnn {
+        fa[i] = to_float(rnd_int(10));
+        fb[i] = to_float(rnd_int(10));
+    }
+    fmatmul(fa, fb, fc, fnn);
+    int fh = 0;
+    for i in 0..fnn * fnn {
+        fh = mix(fh, to_int(fc[i]));
+    }
+    h = mix(h, fh);
+
+    int gridn = 48;
+    float[] u = new_float(gridn * gridn);
+    float[] v = new_float(gridn * gridn);
+    for i in 0..gridn * gridn {
+        u[i] = to_float(rnd_int(1024));
+        v[i] = u[i];
+    }
+    for step in 0..10 {
+        stencil_step(u, v, gridn);
+    }
+    int sh = 0;
+    for i in 0..gridn * gridn {
+        sh = mix(sh, to_int(u[i] * 1048576.0));
+    }
+    h = mix(h, sh);
+    return h;
+}

@@ -1,0 +1,360 @@
+// ===== Dynamic programming =====
+fn int[] random_text(int n, int alpha) {
+    int[] s = new_int(n);
+    for i in 0..n {
+        s[i] = rnd_int(alpha);
+    }
+    return s;
+}
+
+fn int lcs_length(int[] a, int[] b) {
+    int m = len(b);
+    int[] prev = new_int(m + 1);
+    int[] cur = new_int(m + 1);
+    for i in 1..len(a) + 1 {
+        for j in 1..m + 1 {
+            if (a[i - 1] == b[j - 1]) {
+                cur[j] = prev[j - 1] + 1;
+            } else {
+                cur[j] = max_int(prev[j], cur[j - 1]);
+            }
+        }
+        for j in 0..m + 1 {
+            prev[j] = cur[j];
+        }
+    }
+    return prev[m];
+}
+
+fn int edit_distance(int[] a, int[] b) {
+    int m = len(b);
+    int[] prev = new_int(m + 1);
+    int[] cur = new_int(m + 1);
+    for j in 0..m + 1 {
+        prev[j] = j;
+    }
+    for i in 1..len(a) + 1 {
+        cur[0] = i;
+        for j in 1..m + 1 {
+            int cost = 1;
+            if (a[i - 1] == b[j - 1]) {
+                cost = 0;
+            }
+            cur[j] = min_int(min_int(prev[j] + 1, cur[j - 1] + 1), prev[j - 1] + cost);
+        }
+        for j in 0..m + 1 {
+            prev[j] = cur[j];
+        }
+    }
+    return prev[m];
+}
+
+fn int knapsack(int[] w, int[] v, int cap) {
+    int[] best = new_int(cap + 1);
+    for i in 0..len(w) {
+        int c = cap;
+        while (c >= w[i]) {
+            int cand = best[c - w[i]] + v[i];
+            if (cand > best[c]) {
+                best[c] = cand;
+            }
+            c = c - 1;
+        }
+    }
+    return best[cap];
+}
+
+fn int min_coins(int[] coins, int amount) {
+    int inf = 1000000000;
+    int[] best = new_int(amount + 1);
+    for a in 1..amount + 1 {
+        best[a] = inf;
+        for i in 0..len(coins) {
+            int c = coins[i];
+            if (c <= a && best[a - c] + 1 < best[a]) {
+                best[a] = best[a - c] + 1;
+            }
+        }
+    }
+    return best[amount];
+}
+
+fn int count_ways(int[] coins, int amount) {
+    int[] ways = new_int(amount + 1);
+    ways[0] = 1;
+    for i in 0..len(coins) {
+        int c = coins[i];
+        for a in c..amount + 1 {
+            ways[a] = (ways[a] + ways[a - c]) % 1000000007;
+        }
+    }
+    return ways[amount];
+}
+
+fn int lis_length(int[] a) {
+    int[] tails = new_int(len(a) + 1);
+    int size = 0;
+    for i in 0..len(a) {
+        int lo = 0;
+        int hi = size;
+        while (lo < hi) {
+            int mid = (lo + hi) / 2;
+            if (tails[mid] < a[i]) {
+                lo = mid + 1;
+            } else {
+                hi = mid;
+            }
+        }
+        tails[lo] = a[i];
+        if (lo == size) {
+            size = size + 1;
+        }
+    }
+    return size;
+}
+
+fn int lis_slow(int[] a) {
+    int n = len(a);
+    int[] best = new_int(n);
+    int answer = 0;
+    for i in 0..n {
+        best[i] = 1;
+        for j in 0..i {
+            if (a[j] < a[i] && best[j] + 1 > best[i]) {
+                best[i] = best[j] + 1;
+            }
+        }
+        answer = max_int(answer, best[i]);
+    }
+    return answer;
+}
+
+fn int matrix_chain(int[] dims) {
+    int n = len(dims) - 1;
+    int[] cost = new_int(n * n);
+    for span in 2..n + 1 {
+        for i in 0..n - span + 1 {
+            int j = i + span - 1;
+            int best = 1000000000000;
+            for k in i..j {
+                int c = cost[i * n + k] + cost[(k + 1) * n + j] + dims[i] * dims[k + 1] * dims[j + 1];
+                if (c < best) {
+                    best = c;
+                }
+            }
+            cost[i * n + j] = best;
+        }
+    }
+    return cost[n - 1];
+}
+
+fn int max_subarray(int[] a, int offset) {
+    int best = a[0] - offset;
+    int run = 0;
+    for i in 0..len(a) {
+        int v = a[i] - offset;
+        run = max_int(v, run + v);
+        best = max_int(best, run);
+    }
+    return best;
+}
+
+fn int longest_pal_subseq(int[] s) {
+    int n = len(s);
+    int[] t = new_int(n * n);
+    int i = n - 1;
+    while (i >= 0) {
+        t[i * n + i] = 1;
+        for j in i + 1..n {
+            if (s[i] == s[j]) {
+                int inner = 0;
+                if (j - 1 >= i + 1) {
+                    inner = t[(i + 1) * n + j - 1];
+                }
+                t[i * n + j] = inner + 2;
+            } else {
+                t[i * n + j] = max_int(t[(i + 1) * n + j], t[i * n + j - 1]);
+            }
+        }
+        i = i - 1;
+    }
+    return t[n - 1];
+}
+
+fn int subset_sum_count(int[] vals, int target) {
+    int[] reach = new_int(target + 1);
+    reach[0] = 1;
+    for i in 0..len(vals) {
+        int c = target;
+        while (c >= vals[i]) {
+            if (reach[c - vals[i]] == 1) {
+                reach[c] = 1;
+            }
+            c = c - 1;
+        }
+    }
+    int count = 0;
+    for s in 0..target + 1 {
+        count = count + reach[s];
+    }
+    return count;
+}
+
+fn int partition_count(int n) {
+    int[] p = new_int(n + 1);
+    p[0] = 1;
+    for part in 1..n + 1 {
+        for s in part..n + 1 {
+            p[s] = (p[s] + p[s - part]) % 1000000007;
+        }
+    }
+    return p[n];
+}
+
+fn int tsp_dp(int[] dist, int n) {
+    int inf = 1000000000;
+    int full = 1 << n;
+    int[] dp = new_int(full * n);
+    for i in 0..full * n {
+        dp[i] = inf;
+    }
+    dp[n] = 0;
+    for mask in 1..full {
+        if (mask % 2 == 1) {
+            for last in 0..n {
+                int cur = dp[mask * n + last];
+                if (cur < inf && ((mask >> last) & 1) == 1) {
+                    for nxt in 0..n {
+                        if (((mask >> nxt) & 1) == 0) {
+                            int nm = mask | (1 << nxt);
+                            int cand = cur + dist[last * n + nxt];
+                            if (cand < dp[nm * n + nxt]) {
+                                dp[nm * n + nxt] = cand;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    int best = inf;
+    for last in 1..n {
+        int cand = dp[(full - 1) * n + last] + dist[last * n];
+        if (cand < best) {
+            best = cand;
+        }
+    }
+    return best;
+}
+
+fn int tsp_rec(int[] dist, int n, int[] used, int cur, int count, int cost, int best) {
+    if (cost >= best) {
+        return best;
+    }
+    if (count == n) {
+        return min_int(best, cost + dist[cur * n]);
+    }
+    int b = best;
+    for nxt in 1..n {
+        if (used[nxt] == 0) {
+            used[nxt] = 1;
+            b = tsp_rec(dist, n, used, nxt, count + 1, cost + dist[cur * n + nxt], b);
+            used[nxt] = 0;
+        }
+    }
+    return b;
+}
+
+fn int group_dynamic() {
+    reset_seed(41);
+    int h = 0;
+    int len1 = 1600;
+    int[] a = random_text(len1, 4);
+    int[] b = random_text(len1, 4);
+    int lcs = lcs_length(a, b);
+    int ed = edit_distance(a, b);
+    int[] a2 = new_int(len1);
+    copy_into(a2, a);
+    ok(same(lcs_length(a, a2), len1));
+    ok(same(edit_distance(a, a2), 0));
+    ok(at_most(ed, 2 * (len1 - lcs)));
+    h = mix(mix(h, lcs), ed);
+
+    int items = 300;
+    int[] wt = new_int(items);
+    int[] val = new_int(items);
+    for i in 0..items {
+        wt[i] = 1 + rnd_int(60);
+        val[i] = rnd_int(500);
+    }
+    h = mix(h, knapsack(wt, val, 8000));
+
+    int[] coins = new_int(8);
+    coins[0] = 1;
+    coins[1] = 5;
+    coins[2] = 10;
+    coins[3] = 25;
+    coins[4] = 50;
+    coins[5] = 100;
+    coins[6] = 7;
+    coins[7] = 13;
+    h = mix(h, min_coins(coins, 60000));
+    h = mix(h, count_ways(coins, 60000));
+
+    int[] seq = random_array(150000, 1000000);
+    h = mix(h, lis_length(seq));
+    int[] shortseq = random_array(700, 5000);
+    ok(same(lis_length(shortseq), lis_slow(shortseq)));
+
+    int[] dims = new_int(161);
+    for i in 0..161 {
+        dims[i] = 2 + rnd_int(40);
+    }
+    h = mix(h, matrix_chain(dims));
+
+    int[] noisy = random_array(200000, 2000);
+    h = mix(h, max_subarray(noisy, 900));
+
+    int pn = 1000;
+    int[] ptext = random_text(pn, 5);
+    int[] rev = new_int(pn);
+    for i in 0..pn {
+        rev[i] = ptext[pn - 1 - i];
+    }
+    int pal = longest_pal_subseq(ptext);
+    ok(same(pal, lcs_length(ptext, rev)));
+    h = mix(h, pal);
+
+    int[] nums = random_array(150, 90);
+    for i in 0..150 {
+        nums[i] = nums[i] + 1;
+    }
+    h = mix(h, subset_sum_count(nums, 10000));
+    h = mix(h, partition_count(3000));
+
+    int tn = 14;
+    int[] dist = new_int(tn * tn);
+    for i in 0..tn {
+        for j in 0..i {
+            int w = 1 + rnd_int(99);
+            dist[i * tn + j] = w;
+            dist[j * tn + i] = w;
+        }
+    }
+    h = mix(h, tsp_dp(dist, tn));
+    int sn = 8;
+    int[] sdist = new_int(sn * sn);
+    for i in 0..sn {
+        for j in 0..i {
+            int w = 1 + rnd_int(99);
+            sdist[i * sn + j] = w;
+            sdist[j * sn + i] = w;
+        }
+    }
+    int[] used = new_int(sn);
+    used[0] = 1;
+    int brute = tsp_rec(sdist, sn, used, 0, 1, 0, 1000000000);
+    ok(same(brute, tsp_dp(sdist, sn)));
+    h = mix(h, brute);
+    return h;
+}

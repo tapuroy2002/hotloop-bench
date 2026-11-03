@@ -1,0 +1,381 @@
+// ===== Sorting and searching =====
+fn void insertion_sort(int[] a) {
+    for i in 1..len(a) {
+        int v = a[i];
+        int j = i - 1;
+        while (j >= 0 && a[j] > v) {
+            a[j + 1] = a[j];
+            j = j - 1;
+        }
+        a[j + 1] = v;
+    }
+}
+
+fn void selection_sort(int[] a) {
+    int n = len(a);
+    for i in 0..n - 1 {
+        int m = i;
+        for j in i + 1..n {
+            if (a[j] < a[m]) {
+                m = j;
+            }
+        }
+        swap(a, i, m);
+    }
+}
+
+fn void bubble_sort(int[] a) {
+    int last = len(a) - 1;
+    int swapped = 1;
+    while (last > 0 && swapped == 1) {
+        swapped = 0;
+        for i in 0..last {
+            if (a[i] > a[i + 1]) {
+                swap(a, i, i + 1);
+                swapped = 1;
+            }
+        }
+        last = last - 1;
+    }
+}
+
+fn void shell_sort(int[] a) {
+    int n = len(a);
+    int gap = 1;
+    while (gap < n / 3) {
+        gap = gap * 3 + 1;
+    }
+    while (gap > 0) {
+        for i in gap..n {
+            int v = a[i];
+            int j = i;
+            while (j >= gap && a[j - gap] > v) {
+                a[j] = a[j - gap];
+                j = j - gap;
+            }
+            a[j] = v;
+        }
+        gap = gap / 3;
+    }
+}
+
+fn void sift_down(int[] a, int root_start, int stop) {
+    int root = root_start;
+    int going = 1;
+    while (going == 1) {
+        int child = 2 * root + 1;
+        if (child >= stop) {
+            going = 0;
+        } else {
+            if (child + 1 < stop && a[child + 1] > a[child]) {
+                child = child + 1;
+            }
+            if (a[root] >= a[child]) {
+                going = 0;
+            } else {
+                swap(a, root, child);
+                root = child;
+            }
+        }
+    }
+}
+
+fn void heap_sort(int[] a) {
+    int n = len(a);
+    int i = n / 2 - 1;
+    while (i >= 0) {
+        sift_down(a, i, n);
+        i = i - 1;
+    }
+    int e = n - 1;
+    while (e > 0) {
+        swap(a, 0, e);
+        sift_down(a, 0, e);
+        e = e - 1;
+    }
+}
+
+fn void merge_range(int[] a, int[] aux, int lo, int hi) {
+    if (hi - lo < 2) {
+        return;
+    }
+    int mid = (lo + hi) / 2;
+    merge_range(a, aux, lo, mid);
+    merge_range(a, aux, mid, hi);
+    int i = lo;
+    int j = mid;
+    int k = lo;
+    while (i < mid && j < hi) {
+        if (a[i] <= a[j]) {
+            aux[k] = a[i];
+            i = i + 1;
+        } else {
+            aux[k] = a[j];
+            j = j + 1;
+        }
+        k = k + 1;
+    }
+    while (i < mid) {
+        aux[k] = a[i];
+        i = i + 1;
+        k = k + 1;
+    }
+    while (j < hi) {
+        aux[k] = a[j];
+        j = j + 1;
+        k = k + 1;
+    }
+    for t in lo..hi {
+        a[t] = aux[t];
+    }
+}
+
+fn void merge_sort(int[] a) {
+    int[] aux = new_int(len(a));
+    merge_range(a, aux, 0, len(a));
+}
+
+fn int count_inversions(int[] a, int[] aux, int lo, int hi) {
+    if (hi - lo < 2) {
+        return 0;
+    }
+    int mid = (lo + hi) / 2;
+    int inv = count_inversions(a, aux, lo, mid);
+    inv = inv + count_inversions(a, aux, mid, hi);
+    int i = lo;
+    int j = mid;
+    int k = lo;
+    while (i < mid && j < hi) {
+        if (a[i] <= a[j]) {
+            aux[k] = a[i];
+            i = i + 1;
+        } else {
+            aux[k] = a[j];
+            j = j + 1;
+            inv = inv + (mid - i);
+        }
+        k = k + 1;
+    }
+    while (i < mid) {
+        aux[k] = a[i];
+        i = i + 1;
+        k = k + 1;
+    }
+    while (j < hi) {
+        aux[k] = a[j];
+        j = j + 1;
+        k = k + 1;
+    }
+    for t in lo..hi {
+        a[t] = aux[t];
+    }
+    return inv;
+}
+
+fn void quick_sort(int[] a) {
+    int n = len(a);
+    int[] stack = new_int(4 * n + 8);
+    stack[0] = 0;
+    stack[1] = n - 1;
+    int sp = 2;
+    while (sp > 0) {
+        sp = sp - 2;
+        int lo = stack[sp];
+        int hi = stack[sp + 1];
+        int mid = (lo + hi) / 2;
+        if (a[mid] < a[lo]) {
+            swap(a, mid, lo);
+        }
+        if (a[hi] < a[lo]) {
+            swap(a, hi, lo);
+        }
+        if (a[hi] < a[mid]) {
+            swap(a, hi, mid);
+        }
+        int pivot = a[mid];
+        int i = lo;
+        int j = hi;
+        while (i <= j) {
+            while (a[i] < pivot) {
+                i = i + 1;
+            }
+            while (a[j] > pivot) {
+                j = j - 1;
+            }
+            if (i <= j) {
+                swap(a, i, j);
+                i = i + 1;
+                j = j - 1;
+            }
+        }
+        if (lo < j) {
+            stack[sp] = lo;
+            stack[sp + 1] = j;
+            sp = sp + 2;
+        }
+        if (i < hi) {
+            stack[sp] = i;
+            stack[sp + 1] = hi;
+            sp = sp + 2;
+        }
+    }
+}
+
+fn void radix_pass(int[] src, int[] dst, int[] counts, int unit) {
+    for b in 0..256 {
+        counts[b] = 0;
+    }
+    for i in 0..len(src) {
+        int d = (src[i] / unit) % 256;
+        counts[d] = counts[d] + 1;
+    }
+    int total = 0;
+    for b in 0..256 {
+        int c = counts[b];
+        counts[b] = total;
+        total = total + c;
+    }
+    for i in 0..len(src) {
+        int d = (src[i] / unit) % 256;
+        dst[counts[d]] = src[i];
+        counts[d] = counts[d] + 1;
+    }
+}
+
+fn void radix_sort(int[] a) {
+    int[] tmp = new_int(len(a));
+    int[] counts = new_int(256);
+    radix_pass(a, tmp, counts, 1);
+    radix_pass(tmp, a, counts, 256);
+    radix_pass(a, tmp, counts, 65536);
+    copy_into(a, tmp);
+}
+
+fn void counting_sort(int[] a, int limit) {
+    int[] counts = new_int(limit);
+    for i in 0..len(a) {
+        counts[a[i]] = counts[a[i]] + 1;
+    }
+    int k = 0;
+    for v in 0..limit {
+        int c = counts[v];
+        while (c > 0) {
+            a[k] = v;
+            k = k + 1;
+            c = c - 1;
+        }
+    }
+}
+
+fn int lower_bound(int[] a, int key) {
+    int lo = 0;
+    int hi = len(a);
+    while (lo < hi) {
+        int mid = (lo + hi) / 2;
+        if (a[mid] < key) {
+            lo = mid + 1;
+        } else {
+            hi = mid;
+        }
+    }
+    return lo;
+}
+
+fn int quick_select(int[] a, int k) {
+    int lo = 0;
+    int hi = len(a) - 1;
+    while (lo < hi) {
+        int pivot = a[(lo + hi) / 2];
+        int i = lo;
+        int j = hi;
+        while (i <= j) {
+            while (a[i] < pivot) {
+                i = i + 1;
+            }
+            while (a[j] > pivot) {
+                j = j - 1;
+            }
+            if (i <= j) {
+                swap(a, i, j);
+                i = i + 1;
+                j = j - 1;
+            }
+        }
+        if (k <= j) {
+            hi = j;
+        } else if (k >= i) {
+            lo = i;
+        } else {
+            return a[k];
+        }
+    }
+    return a[k];
+}
+
+fn int group_sorting() {
+    reset_seed(11);
+    int h = 0;
+    int n = 60000;
+    int[] base = random_array(n, 16000000);
+    int[] a = new_int(n);
+    copy_into(a, base);
+    quick_sort(a);
+    ok(is_sorted(a));
+    h = mix(h, checksum(a));
+    copy_into(a, base);
+    merge_sort(a);
+    ok(is_sorted(a));
+    h = mix(h, checksum(a));
+    copy_into(a, base);
+    heap_sort(a);
+    ok(is_sorted(a));
+    h = mix(h, checksum(a));
+    copy_into(a, base);
+    shell_sort(a);
+    ok(is_sorted(a));
+    h = mix(h, checksum(a));
+    copy_into(a, base);
+    radix_sort(a);
+    ok(is_sorted(a));
+    h = mix(h, checksum(a));
+    int[] small = new_int(n);
+    for i in 0..n {
+        small[i] = base[i] % 1000;
+    }
+    counting_sort(small, 1000);
+    ok(is_sorted(small));
+    h = mix(h, checksum(small));
+    int m = 2200;
+    int[] little = random_array(m, 100000);
+    int[] b = new_int(m);
+    copy_into(b, little);
+    insertion_sort(b);
+    ok(is_sorted(b));
+    h = mix(h, checksum(b));
+    copy_into(b, little);
+    selection_sort(b);
+    ok(is_sorted(b));
+    h = mix(h, checksum(b));
+    copy_into(b, little);
+    bubble_sort(b);
+    ok(is_sorted(b));
+    h = mix(h, checksum(b));
+    int found = 0;
+    for q in 0..n {
+        int pos = lower_bound(a, (q * 7919) % 16000000);
+        found = mix(found, pos);
+    }
+    h = mix(h, found);
+    copy_into(a, base);
+    int kth = quick_select(a, n / 2);
+    radix_sort(base);
+    ok(same(kth, base[n / 2]));
+    h = mix(h, kth);
+    int cn = 40000;
+    int[] c = random_array(cn, 1000000);
+    int[] aux = new_int(cn);
+    int inv = count_inversions(c, aux, 0, cn);
+    ok(is_sorted(c));
+    h = mix(h, inv);
+    return h;
+}

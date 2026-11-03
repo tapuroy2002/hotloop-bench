@@ -1,0 +1,6 @@
+build/
+*.tmp
+.hotloop-server.pid
+src/csharp/obj/
+src/csharp/bin/
+__pycache__/
