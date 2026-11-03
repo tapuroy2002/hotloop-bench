@@ -2,12 +2,12 @@ c|unavailable|gcc
 cpp|unavailable|g++
 rust|unavailable|rustc
 go|unavailable|go
-java|compile-passed
 csharp|unavailable|dotnet SDK
 kotlin|unavailable|kotlinc
 swift|unavailable|swiftc
-dart|compile-passed
-python|runtime-available
 ruby|unavailable|ruby
 php|unavailable|php
+java|compile-passed
+dart|compile-passed
 javascript|runtime-available
+python|runtime-available

@@ -1,45 +1,51 @@
-# hotloop run 2026-11-03T07:50:45Z
+# hotloop run 2026-11-03T07:51:57Z
 # os=MINGW64_NT-10.0-26300 3.6.4-b9f03e96.x86_64 x86_64
 # cpu=11th Gen Intel(R) Core(TM) i3-1115G4 @ 3.00GHz
-HOTLOOP|Java|sorting|77.653|1|1160004208
-HOTLOOP|Java|structures|65.171|1|485830511
-HOTLOOP|Java|graphs|88.429|1|1617337069
-HOTLOOP|Java|dynamic|132.124|1|1567281332
-HOTLOOP|Java|strings|237.453|1|1618281505
-HOTLOOP|Java|compress|59.996|1|143266416
-HOTLOOP|Java|numeric|80.752|1|1871991192
-HOTLOOP|Java|search|112.100|1|87810920
-HOTLOOP|Java|score|365.1|0
-HOTLOOP|Dart|sorting|109.351|1|1160004208
-HOTLOOP|Dart|structures|78.276|1|485830511
-HOTLOOP|Dart|graphs|122.216|1|1617337069
-HOTLOOP|Dart|dynamic|195.726|1|1567281332
-HOTLOOP|Dart|strings|278.920|1|1618281505
-HOTLOOP|Dart|compress|85.846|1|143266416
-HOTLOOP|Dart|numeric|150.833|1|1871991192
-HOTLOOP|Dart|search|89.825|1|87810920
-HOTLOOP|Dart|score|278.6|0
-HOTLOOP|Python|sorting|3282.438|1|1160004208
-HOTLOOP|Python|structures|3073.896|1|485830511
-HOTLOOP|Python|graphs|2966.708|1|1617337069
-HOTLOOP|Python|dynamic|8421.344|1|1567281332
-HOTLOOP|Python|strings|4439.859|1|1618281505
-HOTLOOP|Python|compress|1156.378|1|143266416
-HOTLOOP|Python|numeric|4331.406|1|1871991192
-HOTLOOP|Python|search|4998.343|1|87810920
-HOTLOOP|Python|score|9.8|0
+# version java: java version "25.0.1" 2025-10-21 LTS
+# version dart: Dart SDK version: 3.9.4 (stable) (Tue Sep 30 12:08:50 2025 -0700) on "windows_x64"
 # version javascript: v26.13.0
-HOTLOOP|JavaScript|compress|105.326|1|143266416
-HOTLOOP|JavaScript|dynamic|204.512|1|1567281332
-HOTLOOP|JavaScript|graphs|175.596|1|1617337069
-HOTLOOP|JavaScript|numeric|216.998|1|1871991192
-HOTLOOP|JavaScript|search|145.886|1|87810920
-HOTLOOP|JavaScript|sorting|124.433|1|1160004208
-HOTLOOP|JavaScript|strings|294.072|1|1618281505
-HOTLOOP|JavaScript|structures|110.056|1|485830511
-HOTLOOP|JavaScript|score|217.4|0
-# consistency JavaScript: rounds 136.1 126.1 208.9, spread 60.8%
-HOTLOOP|Dart|worst|186.4|compress
-HOTLOOP|Java|worst|219.0|strings
-HOTLOOP|JavaScript|worst|151.9|compress
-HOTLOOP|Python|worst|5.1|dynamic
+# version python: Python 3.13.5
+HOTLOOP|Java|compress|30.203|1|143266416
+HOTLOOP|Java|dynamic|97.032|1|1567281332
+HOTLOOP|Java|graphs|67.111|1|1617337069
+HOTLOOP|Java|numeric|58.061|1|1871991192
+HOTLOOP|Java|search|58.054|1|87810920
+HOTLOOP|Java|sorting|65.538|1|1160004208
+HOTLOOP|Java|strings|181.999|1|1618281505
+HOTLOOP|Java|structures|50.019|1|485830511
+HOTLOOP|Java|score|528.5|0
+# consistency Java: rounds 469.1 439.3 519.1, spread 17.0%
+HOTLOOP|Dart|compress|77.179|1|143266416
+HOTLOOP|Dart|dynamic|225.748|1|1567281332
+HOTLOOP|Dart|graphs|115.119|1|1617337069
+HOTLOOP|Dart|numeric|141.780|1|1871991192
+HOTLOOP|Dart|search|88.306|1|87810920
+HOTLOOP|Dart|sorting|100.543|1|1160004208
+HOTLOOP|Dart|strings|249.913|1|1618281505
+HOTLOOP|Dart|structures|66.045|1|485830511
+HOTLOOP|Dart|score|295.3|0
+# consistency Dart: rounds 247.3 280.9 293.1, spread 16.3%
+HOTLOOP|JavaScript|compress|92.754|1|143266416
+HOTLOOP|JavaScript|dynamic|205.431|1|1567281332
+HOTLOOP|JavaScript|graphs|124.410|1|1617337069
+HOTLOOP|JavaScript|numeric|205.975|1|1871991192
+HOTLOOP|JavaScript|search|143.524|1|87810920
+HOTLOOP|JavaScript|sorting|96.202|1|1160004208
+HOTLOOP|JavaScript|strings|282.088|1|1618281505
+HOTLOOP|JavaScript|structures|89.453|1|485830511
+HOTLOOP|JavaScript|score|247.7|0
+# consistency JavaScript: rounds 214.3 232.8 240.9, spread 11.4%
+HOTLOOP|Python|compress|1006.879|1|143266416
+HOTLOOP|Python|dynamic|7748.107|1|1567281332
+HOTLOOP|Python|graphs|2785.783|1|1617337069
+HOTLOOP|Python|numeric|4013.980|1|1871991192
+HOTLOOP|Python|search|4714.220|1|87810920
+HOTLOOP|Python|sorting|3207.284|1|1160004208
+HOTLOOP|Python|strings|3966.355|1|1618281505
+HOTLOOP|Python|structures|2769.185|1|485830511
+HOTLOOP|Python|score|10.7|0
+# consistency Python: rounds 10.0 10.5 10.3, spread 4.9%
+HOTLOOP|Dart|worst|190.5|dynamic
+HOTLOOP|Java|worst|285.7|strings
+HOTLOOP|JavaScript|worst|165.1|numeric
+HOTLOOP|Python|worst|5.5|dynamic
