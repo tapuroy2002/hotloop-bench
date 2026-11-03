@@ -32,7 +32,7 @@
         <div>
           <p class="prompt"><span class="p-user">you</span>@<span class="p-host">hotloop</span>:<span class="p-path">~/bench</span>$ ./leaderboard</p>
           <h1 id="board-title">Language benchmark</h1>
-          <p class="lede">How fast is each programming language on your computer? Every language runs the same 8 kinds of tests. <b>Higher score = faster.</b> 1000 means as fast as optimized C on the reference computer.</p>
+          <p class="lede" id="lede">How fast is each programming language on your computer? Every language runs the same 8 kinds of tests. <b>Higher score = faster.</b> 1000 means as fast as optimized C on the reference computer.</p>
         </div>
         <p class="run-stamp" id="run-date"></p>
       </div>
@@ -75,6 +75,17 @@
       <div class="section-head">
         <h2 id="run-title">Run the benchmark</h2>
         <p>Measure how fast each language runs on this computer. Pick languages, pick a mode, press Run. Nothing is uploaded.</p>
+      </div>
+
+      <div class="online-note" id="online-note" hidden>
+        <h3>Run it on your own computer</h3>
+        <p>This website shows saved results. Running the benchmark needs the small local runner, which can't run on a website. To run it yourself:</p>
+        <ol>
+          <li><a href="https://github.com/tapuroy2002/hotloop-bench/archive/refs/heads/main.zip">Download the project (ZIP)</a> and unzip it.</li>
+          <li>Install <a href="https://nodejs.org/" target="_blank" rel="noopener noreferrer">Node.js</a> and, on Windows, <a href="https://git-scm.com/download/win" target="_blank" rel="noopener noreferrer">Git for Windows</a> (for Bash).</li>
+          <li>Double-click <code>start.bat</code> (macOS/Linux: <code>node launch.js</code>). The dashboard opens with the Run button working.</li>
+        </ol>
+        <p class="dim">Languages you have installed are measured; the rest are estimated. Source code: <a href="https://github.com/tapuroy2002/hotloop-bench" target="_blank" rel="noopener noreferrer">github.com/tapuroy2002/hotloop-bench</a></p>
       </div>
 
       <div class="run-card" id="console">

@@ -41,6 +41,9 @@ const fmt = (v, d = 1) => v == null ? '—' : v.toFixed(d);
 // ---------- runner location ----------
 const DASHBOARD = 'http://127.0.0.1:4173/';
 const openedAsFile = location.protocol === 'file:';
+// Served from a website (e.g. GitHub Pages) instead of the local runner: show results only, no running.
+const onlineView = !openedAsFile && !['127.0.0.1', 'localhost'].includes(location.hostname);
+const REPO = 'https://github.com/tapuroy2002/hotloop-bench';
 const NO_RUNNER = openedAsFile
   ? 'This page was opened as a file, so it cannot run benchmarks. Double-click start.bat. It starts the runner and opens the dashboard at ' + DASHBOARD
   : 'Could not reach the local runner. Double-click start.bat (keep its window open), then reload this page.';
@@ -84,8 +87,10 @@ function parseStatus(text) {
 }
 function showRunDate(text) {
   const m = /^# hotloop run (\S+)/m.exec(text), d = m && new Date(m[1]);
-  $('#run-date').textContent = d && !isNaN(d)
-    ? 'Results from ' + new Intl.DateTimeFormat(undefined, {dateStyle:'medium', timeStyle:'short'}).format(d) : '';
+  const cpu = (/^# cpu=(.+)$/m.exec(text) || [])[1];
+  $('#run-date').textContent = (d && !isNaN(d)
+    ? 'Results from ' + new Intl.DateTimeFormat(undefined, {dateStyle:'medium', timeStyle:'short'}).format(d) : '')
+    + (cpu && cpu !== 'unknown' ? ' · ' + cpu.replace(/\s*@.*$/, '').replace(/\(R\)|\(TM\)/g, '') : '');
 }
 
 // ---------- model: measured + estimated ----------
@@ -278,7 +283,7 @@ function renderKpis(model) {
   $('#welcome').hidden = model.used.length > 0;
   $('#kpis').innerHTML =
     `<div class="kpi kpi-overall" title="One number for this computer: the average score of ${o ? o.langs : 12} languages. Languages you have not installed use estimates. Higher is faster."><dt>Overall score</dt><dd><span class="kpi-val">${o ? `<span class="accent">${fmt(o.score)}</span>` : '—'}</span><span class="kpi-sub">${o
-      ? `Your computer (${o.measured} of ${o.langs} languages measured). Reference computer: ${fmt(o.ref)}`
+      ? `${onlineView ? 'Test computer' : 'Your computer'} (${o.measured} of ${o.langs} languages measured). Reference computer: ${fmt(o.ref)}`
       : 'Shown after your first run'}</span></dd></div>` +
     kpi('Fastest language here', top ? `<span class="accent">${esc(top.name)}</span> ${fmt(top.score)}` : '—', top ? 'Average score over the 8 tests' : 'Run a language to measure it', 'The fastest language that was actually measured on this computer') +
     kpi('Computer speed', speed ? `${fmt(speed, 2)}×` : '—', speed ? `compared with the reference computer (1.00×)` : 'Shown after your first run', 'Above 1 means faster than the reference computer, below 1 means slower') +
@@ -663,7 +668,16 @@ if (REF.machine) $('#ref-machine').textContent = REF.machine;
 let bootLoad = Promise.resolve();
 renderPicker();
 render();
-if (openedAsFile) {
+if (onlineView) {
+  // Results only. Running needs the local runner, so explain how to get it instead of showing controls that cannot work.
+  runnerOffline = true;
+  $('#connection').classList.add('online'); $('#connection-state').textContent = 'online view';
+  $('#console').hidden = true; $('#online-note').hidden = false;
+  $('#run .section-head p').textContent = 'Measure how fast each language runs on your own computer. It is free and runs locally; nothing is uploaded.';
+  $('#lede').innerHTML = 'How fast is each programming language? Every language runs the same 8 kinds of tests. <b>Higher score = faster.</b> 1000 means as fast as optimized C on the reference computer. These results were measured on the test computer named above; <a href="#run">run it on your own computer</a> to compare.';
+  $('.legend span').firstChild.nextSibling.textContent = 'Measured on the test computer';
+  bootLoad = refreshFiles(true);
+} else if (openedAsFile) {
   $('#connection').classList.add('offline'); $('#connection-state').textContent = 'opened as file';
   setMsg(NO_RUNNER, 'bad'); runButton.disabled = true;
   $('#run-estimate').textContent = 'Open the dashboard with start.bat to run benchmarks.'; $('#run-estimate').className = 'run-estimate bad';
